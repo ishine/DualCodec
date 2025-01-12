@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import os
 from easydict import EasyDict as edict
 from contextlib import nullcontext
+import warnings
 
 def _build_semantic_model(dualcodec_path, meanvar_fname="w2vbert2_mean_var_stats_emilia.pt", semantic_model_path="facebook/w2v-bert-2.0", device="cuda", **kwargs):
     """Build the w2v semantic model and load pretrained weights.
@@ -21,6 +22,10 @@ def _build_semantic_model(dualcodec_path, meanvar_fname="w2vbert2_mean_var_stats
     - feature_extractor: SeamlessM4TFeatureExtractor for audio preprocessing
     """
     from transformers import Wav2Vec2BertModel
+
+    if not torch.cuda.is_available():
+        warnings.warn("CUDA is not available, running on CPU.")
+        device = "cpu"
 
     # load semantic model
     semantic_model = Wav2Vec2BertModel.from_pretrained(semantic_model_path)

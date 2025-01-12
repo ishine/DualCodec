@@ -6,7 +6,6 @@ import hydra
 import os
 import torch
 import torchaudio
-import librosa
 import torch.nn.functional as F
 
 class Inference:
@@ -31,24 +30,11 @@ class Inference:
             torchaudio.save(f'{n_quantizers}.wav', x_out.squeeze(0).cpu(), 24000)
         # breakpoint()
 
-def _infer(cfg):
-
-    model = hydra.utils.instantiate(cfg.model.model)
-    inference = Inference(model, cfg.ckpt_path, cfg)
-
-    audio, _ = librosa.load('/ssd2/lijiaqi18/baidu/simeji-nlp/zero-shot-tts-training/example_prompts/3.wav', sr=24000)
-    inference.infer(audio)
-
-
 @hydra.main(
     version_base="1.3",
     config_path="../../../conf/",
     config_name="codec_infer.yaml",
 )
-def main(cfg: DictConfig) -> Optional[float]:
-
-    # train the model
-    _infer(cfg)
 
 def prepare_model():
     import hydra

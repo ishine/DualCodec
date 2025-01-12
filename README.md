@@ -1,12 +1,54 @@
 # DualCodec
+## Installation
+```bash
+pip install dualcodec
+```
+
+## Available models
+- 12hz_v1: DualCodec model trained with 12Hz sampling rate. 
+- 25hz_v1: DualCodec model trained with 25Hz sampling rate.
+
+
 
 ## How to inference
 
-Programic usage
-
 Download checkpoints to local: 
 ```
-# export HF_ENDPOINT=https://hf-mirror.com if you're in China
+# export HF_ENDPOINT=https://hf-mirror.com      # uncomment this to use huggingface mirror if you're in China
 huggingface-cli download facebook/w2v-bert-2.0 --local-dir w2v-bert-2.0
 huggingface-cli download amphion/dualcodec --local-dir dualcodec_ckpts
 ```
+
+To inference an audio in a python script: 
+```python
+import dualcodec
+
+w2v_path = "./w2v-bert-2.0" # your downloaded path
+dualcodec_model_path = "./dualcodec_ckpts" # your downloaded path
+model_id = "12hz_v1" # or "25hz_v1"
+
+dualcodec_model = dualcodec.get_model(model_id, dualcodec_model_path)
+inference = dualcodec.Inference(dualcodec_model=dualcodec_model, dualcodec_path=dualcodec_model_path, w2v_path=w2v_path, device="cuda")
+
+# do inference for your wav
+import torchaudio
+audio, sr = torchaudio.load(YOUR_WAV.wav)
+# resample to 24kHz
+audio = torchaudio.functional.resample(audio, sr, 24000)
+audio = audio.reshape(1,1,-1)
+# extract codes
+semantic_codes, acoustic_codes = inference.encode(audio, n_quantizers=8)
+# semantic_codes shape: torch.Size([1, 1, T])
+# acoustic_codes shape: torch.Size([1, n_quantizers-1, T])
+
+# produce output audio
+out_audio = dualcodec_model.decode_from_codes(semantic_codes, acoustic_codes)
+
+# save output audio
+torchaudio.save("out.wav", out_audio, 24000)
+```
+
+See "example.ipynb" for example inference scripts.
+
+## Training DualCodec
+Stay tuned for the training code release!
