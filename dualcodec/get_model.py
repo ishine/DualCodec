@@ -32,6 +32,7 @@ def get_model(model_id="12hz_v1", pretrained_model_path=None):
         )
         print("Loading model from", model_fname)
         import safetensors
+        import safetensors.torch
         safetensors.torch.load_model(model, model_fname)
         print("Model loaded")
     model.eval()
