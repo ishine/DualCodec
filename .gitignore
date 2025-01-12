@@ -1,3 +1,5 @@
+dist
+*.whl
 dualcodec_ckpts
 *.safetensors
 w2v-bert-2.0
