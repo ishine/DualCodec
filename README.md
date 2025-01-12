@@ -1,4 +1,7 @@
-# DualCodec
+# DualCodec: A Speech Generation-Oriented Neural Audio Codec with Dual Encoding of Waveform and Self-Supervised Feature
+
+
+
 ## Installation
 ```bash
 pip install dualcodec
@@ -14,16 +17,16 @@ pip install dualcodec
 | 25hz_v1   | 25Hz       | Any from 1-12 (maximum 12)       | 16384                               | 1024                                   | 100K hours Emilia  |
 
 
-## How to inference
+## How to inference DualCodec
 
-Download checkpoints to local: 
+### 1. Download checkpoints to local: 
 ```
 # export HF_ENDPOINT=https://hf-mirror.com      # uncomment this to use huggingface mirror if you're in China
 huggingface-cli download facebook/w2v-bert-2.0 --local-dir w2v-bert-2.0
 huggingface-cli download amphion/dualcodec --local-dir dualcodec_ckpts
 ```
 
-To inference an audio in a python script: 
+### 2. To inference an audio in a python script: 
 ```python
 import dualcodec
 
@@ -52,7 +55,14 @@ out_audio = dualcodec_model.decode_from_codes(semantic_codes, acoustic_codes)
 torchaudio.save("out.wav", out_audio.cpu().squeeze(0), 24000)
 ```
 
-See "example.ipynb" for example inference scripts.
+See "example.ipynb" for a running example.
+
+## DualCodec-based TTS models
+### Benchmarking
+
+### Link to DualCodec-based TTS repositories
 
 ## Training DualCodec
-Stay tuned for the training code release!
+Stay tuned for the training code release! Should be within two weeks.
+
+## Citation
