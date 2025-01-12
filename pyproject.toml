@@ -7,6 +7,8 @@ authors = [
 ]
 dependencies = [
     "transformers>=4.30.0",
+    "descript-audio-codec",
+    "easydict",
 ]
 requires-python = ">=3.8"
 readme = "README.md"
