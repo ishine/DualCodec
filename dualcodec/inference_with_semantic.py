@@ -62,6 +62,8 @@ class Inference:
         - dualcodec_model: DualCodec instance, the model weight is loaded by safetensors
         - dualcodec_path: str, path to the dualcodec model
         - w2v_path: str, path to the w2v-bert model
+        - device: str, device to run the model
+        - autocast: bool, whether to use autocast to fp16 for model inference
         """
         self.semantic_cfg = _build_semantic_model(
             dualcodec_path=dualcodec_path,
@@ -92,7 +94,7 @@ class Inference:
         """
         Args:
         - audio: torch.Tensor, shape=(B, 1, T), dtype=torch.float32, input audio waveform
-        - n_quantizers: int, number of quantizers to use
+        - n_quantizers: int, number of RVQ quantizers to use
         Returns:
         - audio: torch.Tensor, shape=(B, 1, T), dtype=torch.float32, output audio waveform
         - semantic_codes: torch.Tensor, shape=(B, 1, T), dtype=torch.int, semantic codes
