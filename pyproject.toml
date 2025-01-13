@@ -1,6 +1,6 @@
 [project]
 name = "dualcodec"
-version = "0.1.2"
+version = "0.1.2-alpha2"
 description = "The DualCodec neural audio codec."
 authors = [
     {name = "Jiaqi Li", email = "jiaqili3@link.cuhk.edu.cn"},
