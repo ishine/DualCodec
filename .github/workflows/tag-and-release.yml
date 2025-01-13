@@ -33,6 +33,8 @@ jobs:
         tag_name: v${{ github.event.inputs.version }}
         release_name: Release v${{ github.event.inputs.version }}
         body: |
-          New release v${{ github.event.inputs.version }}
-        draft: false
-        prerelease: false
+            New release v${{ github.event.inputs.version }}.
+            draft: false
+            prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
