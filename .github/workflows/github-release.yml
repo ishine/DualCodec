@@ -1,0 +1,41 @@
+name: Create GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Matches version tags like v0.1.0, v1.2.3, etc.
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Extract tag name
+        id: extract_tag
+        run: echo "::set-output name=tag::$(git describe --tags --abbrev=0)"
+
+      - name: Generate changelog
+        id: generate_changelog
+        run: |
+          git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --oneline > changelog.txt
+          echo "::set-output name=changelog::$(cat changelog.txt)"
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.extract_tag.outputs.tag }}
+          release_name: Release ${{ steps.extract_tag.outputs.tag }}
+          body: ${{ steps.generate_changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
