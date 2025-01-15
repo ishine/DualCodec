@@ -8,7 +8,6 @@ from audiotools import AudioSignal
 from audiotools.ml import BaseModel
 from torch import nn
 
-# from .base import CodecMixin
 from dac.nn.layers import Snake1d
 from dac.nn.layers import WNConv1d
 from dac.nn.layers import WNConvTranspose1d
