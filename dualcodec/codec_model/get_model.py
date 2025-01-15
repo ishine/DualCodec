@@ -10,7 +10,7 @@ model_id_to_cfgname = {
 
 def get_model(model_id="12hz_v1", pretrained_model_path=None):
     import os
-    import importlib.resources as pkg_resources
+    # import importlib.resources as pkg_resources
     # conf_dir = pkg_resources.files("dualcodec") / "conf/model"
 
     import hydra

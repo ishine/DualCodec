@@ -1,11 +1,14 @@
-# DualCodec: A Speech Generation-Oriented Neural Audio Codec with Dual Encoding of Waveform and Self-Supervised Feature
+# DualCodec: A Low-Frame-Rate, Semantically-Enhanced Neural Audio Codec for Speech Generation
 
-
+## About
 
 ## Installation
 ```bash
 pip install dualcodec
 ```
+
+## News
+- 2025-01-17: DualCodec inference code is released!
 
 ## Available models
 <!-- - 12hz_v1: DualCodec model trained with 12Hz sampling rate. 
@@ -32,7 +35,7 @@ import dualcodec
 
 w2v_path = "./w2v-bert-2.0" # your downloaded path
 dualcodec_model_path = "./dualcodec_ckpts" # your downloaded path
-model_id = "12hz_v1" # or "25hz_v1"
+model_id = "12hz_v1" # select from available Model_IDs, "12hz_v1" or "25hz_v1"
 
 dualcodec_model = dualcodec.get_model(model_id, dualcodec_model_path)
 inference = dualcodec.Inference(dualcodec_model=dualcodec_model, dualcodec_path=dualcodec_model_path, w2v_path=w2v_path, device="cuda")
@@ -58,11 +61,13 @@ torchaudio.save("out.wav", out_audio.cpu().squeeze(0), 24000)
 See "example.ipynb" for a running example.
 
 ## DualCodec-based TTS models
-### Benchmarking
+### DualCodec-based TTS
 
-### Link to DualCodec-based TTS repositories
+## Benchmark results
+### DualCodec audio quality
+### DualCodec-based TTS
 
 ## Training DualCodec
-Stay tuned for the training code release! Should be within two weeks.
+Stay tuned for the training code release!
 
 ## Citation
