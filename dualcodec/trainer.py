@@ -14,7 +14,7 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 import torch.nn as nn
-from cosyvoice.utils.amphion.base_trainer import BaseTrainer
+from dualcodec import BaseTrainer
 import safetensors
 import numpy as np
 from .discriminator import Discriminator
