@@ -101,9 +101,8 @@ class Inference:
         - audio: torch.Tensor, shape=(B, 1, T), dtype=torch.float32, input audio waveform
         - n_quantizers: int, number of RVQ quantizers to use
         Returns:
-        - audio: torch.Tensor, shape=(B, 1, T), dtype=torch.float32, output audio waveform
         - semantic_codes: torch.Tensor, shape=(B, 1, T), dtype=torch.int, semantic codes
-        - acoustic_codes: torch.Tensor, shape=(B, num_vq, T), dtype=torch.int, acoustic codes
+        - acoustic_codes: torch.Tensor, shape=(B, num_vq-1, T), dtype=torch.int, acoustic codes
         """
         audio_16k = torchaudio.functional.resample(audio, 24000, 16000)
 
@@ -141,7 +140,7 @@ class Inference:
         """
         Args:
         - semantic_codes: torch.Tensor, shape=(B, 1, T), dtype=torch.int, semantic codes
-        - acoustic_codes: torch.Tensor, shape=(B, num_vq, T), dtype=torch.int, acoustic codes
+        - acoustic_codes: torch.Tensor, shape=(B, num_vq-1, T), dtype=torch.int, acoustic codes
         Returns:
         - audio: torch.Tensor, shape=(B, 1, T), dtype=torch.float32, output audio waveform
         """
