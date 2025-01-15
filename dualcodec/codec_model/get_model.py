@@ -15,7 +15,7 @@ def get_model(model_id="12hz_v1", pretrained_model_path=None):
 
     import hydra
     from hydra import initialize
-    with initialize(version_base="1.3", config_path="./conf/model"):
+    with initialize(version_base="1.3", config_path="../conf/model"):
         cfg = hydra.compose(
             config_name=model_id_to_cfgname[model_id],
             overrides=[]
