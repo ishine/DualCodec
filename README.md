@@ -69,10 +69,11 @@ See "example.ipynb" for a running example.
 
 ## Training DualCodec
 <!-- Stay tuned for the training code release! -->
-Install other necessary components for training:
+1. Install other necessary components for training:
 ```bash
 pip install dualcodec[train]
 ```
+2. Clone this repository and `cd` to project root folder.
 
 To run example training on example Emilia German data:
 ```bash
