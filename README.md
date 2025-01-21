@@ -68,6 +68,21 @@ See "example.ipynb" for a running example.
 ### DualCodec-based TTS
 
 ## Training DualCodec
-Stay tuned for the training code release!
+<!-- Stay tuned for the training code release! -->
+Install other necessary components for training:
+```bash
+pip install dualcodec[train]
+```
+
+To run example training on example Emilia German data:
+```bash
+python train.py --config-name=codec_train model=dualcodec_12hz_16384_4096_8vq
+```
+This trains from scratch a dualcodec_12hz_16384_4096_8vq model.
+
+To train a 25Hz model:
+```bash
+python train.py --config-name=codec_train model=dualcodec_25hz_16384_1024_12vq
+```
 
 ## Citation
