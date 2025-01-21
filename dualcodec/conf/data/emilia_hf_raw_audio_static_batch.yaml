@@ -10,6 +10,7 @@ dataloader:
 gluster_opener:
   _target_: dualcodec.dataset.processor.gluster_opener
   _partial_: true
+  manual_dist_sampler: true # for iterabledataset + multi-GPU
 
 get_tokenizer:
   _target_: whisper.tokenizer.get_tokenizer
