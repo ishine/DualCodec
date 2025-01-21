@@ -136,6 +136,14 @@ class Trainer(BaseTrainer):
 
 
     def _train_step(self, batch):
+        """
+        Args: 
+        - batch: dict containing the batch data
+        -- batch["speech"]: torch.Tensor of shape (B, T)
+        -- batch["speech_lens"]: torch.Tensor of shape (B,), contains the length of the unpadded speech
+        -- batch["input_features"]: torch.Tensor of shape (B, T, C), extracted by w2v-bert feat extractor
+        -- batch["attention_mask"]: torch.Tensor of shape (B, T), attention mask for the input_features, extracted by w2v-bert feat extractor
+        """
         optim_g, optim_d = self.optimizer, self.optimizer_d
 
         for k, v in batch.items():
