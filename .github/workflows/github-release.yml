@@ -1,4 +1,4 @@
-name: Create GitHub Release
+name: Tag and Release
 
 on:
   push:
@@ -14,28 +14,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Git
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-
-      - name: Extract tag name
-        id: extract_tag
-        run: echo "::set-output name=tag::$(git describe --tags --abbrev=0)"
-
-      - name: Generate changelog
-        id: generate_changelog
-        run: |
-          git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --oneline > changelog.txt
-          echo "::set-output name=changelog::$(cat changelog.txt)"
-
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.extract_tag.outputs.tag }}
-          release_name: Release ${{ steps.extract_tag.outputs.tag }}
-          body: ${{ steps.generate_changelog.outputs.changelog }}
+          generate_release_notes: true
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(github.ref, '-pre') }}
