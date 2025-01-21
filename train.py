@@ -19,7 +19,7 @@ def train(cfg):
 
 @hydra.main(
     version_base="1.3",
-    config_path="../conf",
+    config_path="./dualcodec/conf",
     config_name="moshi_ar_devbox.yaml",
 )
 def main(cfg: DictConfig) -> Optional[float]:    

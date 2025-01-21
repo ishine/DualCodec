@@ -18,7 +18,6 @@ import copy
 import torch.distributed as dist
 import os
 from pathlib import Path
-import pyloudnorm as pyln
 import string
 import time
 import transformers
@@ -40,9 +39,10 @@ def _build_semantic_model(semantic_model, mean_var_path, repcodec_model, repcode
     semantic_mean = semantic_mean
     semantic_std = semantic_std
 
-    safetensors.torch.load_model(repcodec_model, repcodec_path)
-    repcodec_model = repcodec_model.eval()
-    # print("semantic mean: ", semantic_mean.cpu(), "semantic std: ", semantic_std.cpu())
+    if repcodec_model is not None:
+        safetensors.torch.load_model(repcodec_model, repcodec_path)
+        repcodec_model = repcodec_model.eval()
+        # print("semantic mean: ", semantic_mean.cpu(), "semantic std: ", semantic_std.cpu())
     return {
         "model": semantic_model,
         "layer_idx": layer_idx,
@@ -51,16 +51,6 @@ def _build_semantic_model(semantic_model, mean_var_path, repcodec_model, repcode
         "std": semantic_std,
         "repcodec_model": repcodec_model,
     }
-
-def extract_mel_vocos(data, sample_rate=24000, n_fft=1024, hop_length=256, n_mels=100, mode='train'):
-    from vocoder_vocos.vocos.feature_extractors import MelSpectrogramFeatures
-    extractor = MelSpectrogramFeatures(sample_rate, n_fft, hop_length, n_mels)
-    """mel feature extraction using vocos impl"""
-    for sample in data:
-        assert sample['sample_rate'] == sample_rate
-        sample['mel_feat'] = extractor(sample['speech'])
-        breakpoint()
-        yield sample
 
 
 def segment_w2v(data, segment_length=5 * 50, mode="train"):
@@ -126,31 +116,6 @@ def segment_speech(data, segment_length=5 * 24000, mode="train"):
 #     return pyln.normalize.loudness(audio, _loudness, loudness)
 
 
-def normalize(data, mode="train", en_punct=True, use_kana=False):
-    """multilingual text normalize"""
-    from soundstorm_ar.normalization import en, zh, ja
-
-    for value in data:
-        try:
-            if value["language"] == "en":
-                norm_text = en.normalize_en(value["text"])
-            elif value["language"] == "zh":
-                norm_text = zh.normalize_zh(value["text"], en_punct=en_punct)
-            elif value["language"] == "ja":
-                norm_text = ja.normalize_ja(
-                    value["text"], en_punct=en_punct, use_kana=use_kana
-                )  # has cn characters if use_kana=False
-            else:
-                norm_text = value["text"]
-            # print(norm_text)
-            value["text"] = norm_text
-        except Exception as e:
-            print(e)
-            print('error raised from:', value)
-            continue
-        yield value
-
-
 def w2v_feature(data, feature_extractor, mode="train", make_multiple_of=1):
     """
     Args:
@@ -208,10 +173,11 @@ def gluster_opener(data, mode="train", num_epochs=1, manual_dist_sampler=False, 
             new_sample = copy.deepcopy(sample["src"])
             new_sample['epoch'] = epoch  # Add epoch information
 
-            if new_sample['duration'] < min_seconds:
-                continue
-            if new_sample['duration'] > max_seconds:
-                continue
+            if hasattr(new_sample, 'duration'):
+                if new_sample['duration'] < min_seconds:
+                    continue
+                if new_sample['duration'] > max_seconds:
+                    continue
 
             # Print debug information about the yielded sample
             # if manual_dist_sampler:
@@ -224,6 +190,7 @@ def gluster_opener(data, mode="train", num_epochs=1, manual_dist_sampler=False, 
 
 def gluster_filter(
     data,
+    is_emilia=False,
     max_length=10240,
     min_length=10,
     token_max_length=200,
@@ -256,13 +223,18 @@ def gluster_filter(
         Iterable[{key, wav, label, sample_rate}]
     """
     
-    from .gluster_dataset import load_audio_from_tar
     for sample in data:
         # sample['speech'] = torch.randn(100000)
         new_sample = copy.deepcopy(sample)
         start_time = time.time()
         try:
-            if load_from_tar:
+            if is_emilia:
+                new_sample["speech"] = torch.tensor(new_sample['mp3']['array'], dtype=torch.float32).reshape(1,-1)
+                del new_sample['mp3']['array']
+                new_sample["sample_rate"] = new_sample['mp3']['sampling_rate']
+                new_sample["duration"] = len(new_sample["speech"]) / new_sample["sample_rate"]
+            elif load_from_tar:
+                from .gluster_dataset import load_audio_from_tar
                 new_sample["speech"], new_sample["sample_rate"] = load_audio_from_tar(
                     new_sample["wav"]
                 )
@@ -272,8 +244,7 @@ def gluster_filter(
                 )
 
         except Exception as e:
-            print(e)
-            continue
+            raise e
         end_time = time.time()
         if (new_sample["speech"].shape[-1] // new_sample["sample_rate"]) > 45.0:
             print('too long audio, skipped')
@@ -295,61 +266,6 @@ def gluster_filter(
                 continue
         yield new_sample
         continue
-
-
-def filter(
-    data,
-    max_length=10240,
-    min_length=10,
-    token_max_length=200,
-    token_min_length=1,
-    min_output_input_ratio=0.0005,
-    max_output_input_ratio=1,
-    mode="train",
-):
-    """Filter sample according to feature and label length
-    Inplace operation.
-
-    Args::
-        data: Iterable[{key, wav, label, sample_rate}]
-        max_length: drop utterance which is greater than max_length(10ms)
-        min_length: drop utterance which is less than min_length(10ms)
-        token_max_length: drop utterance which is greater than
-            token_max_length, especially when use char unit for
-            english modeling
-        token_min_length: drop utterance which is
-            less than token_max_length
-        min_output_input_ratio: minimal ration of
-            token_length / feats_length(10ms)
-        max_output_input_ratio: maximum ration of
-            token_length / feats_length(10ms)
-
-    Returns:
-        Iterable[{key, wav, label, sample_rate}]
-    """
-    for sample in data:
-        sample["speech"], sample["sample_rate"] = torchaudio.load(
-            BytesIO(sample["audio_data"])
-        )
-        del sample["audio_data"]
-        # sample['wav'] is torch.Tensor, we have 100 frames every second
-        num_frames = sample["speech"].size(1) / sample["sample_rate"] * 100
-        if num_frames < min_length:
-            continue
-        if num_frames > max_length:
-            continue
-        if len(sample["text_token"]) < token_min_length:
-            continue
-        if len(sample["text_token"]) > token_max_length:
-            continue
-        if len(sample["speech_token"]) == 0:
-            continue
-        if num_frames != 0:
-            if len(sample["text_token"]) / num_frames < min_output_input_ratio:
-                continue
-            if len(sample["text_token"]) / num_frames > max_output_input_ratio:
-                continue
-        yield sample
 
 
 def resample(data, resample_rate=22050, min_sample_rate=16000, mode="train"):
@@ -692,74 +608,3 @@ def gluster_padding(
         packed_batch_features['sample_rate'] = sample[0]['sample_rate']
         yield packed_batch_features
 
-
-def padding(data, use_spk_embedding, mode="train"):
-    """Padding the data into training data
-
-    Args:
-        data: Iterable[List[{key, feat, label}]]
-
-    Returns:
-        Iterable[Tuple(keys, feats, labels, feats lengths, label lengths)]
-    """
-    for sample in data:
-        assert isinstance(sample, list)
-        speech_feat_len = torch.tensor(
-            [x["speech_feat"].size(1) for x in sample], dtype=torch.int32
-        )
-        order = torch.argsort(speech_feat_len, descending=True)
-
-        utts = [sample[i]["utt"] for i in order]
-        speech_token = [torch.tensor(sample[i]["speech_token"]) for i in order]
-        speech_token_len = torch.tensor(
-            [i.size(0) for i in speech_token], dtype=torch.int32
-        )
-        speech_token = pad_sequence(speech_token, batch_first=True, padding_value=0)
-        speech_feat = [sample[i]["speech_feat"] for i in order]
-        speech_feat_len = torch.tensor(
-            [i.size(0) for i in speech_feat], dtype=torch.int32
-        )
-        speech_feat = pad_sequence(speech_feat, batch_first=True, padding_value=0)
-        text = [sample[i]["text"] for i in order]
-        text_token = [torch.tensor(sample[i]["text_token"]) for i in order]
-        text_token_len = torch.tensor(
-            [i.size(0) for i in text_token], dtype=torch.int32
-        )
-        text_token = pad_sequence(text_token, batch_first=True, padding_value=0)
-        utt_embedding = torch.stack([sample[i]["utt_embedding"] for i in order], dim=0)
-        spk_embedding = torch.stack([sample[i]["spk_embedding"] for i in order], dim=0)
-        batch = {
-            "utts": utts,
-            "speech_token": speech_token,
-            "speech_token_len": speech_token_len,
-            "speech_feat": speech_feat,
-            "speech_feat_len": speech_feat_len,
-            "text": text,
-            "text_token": text_token,
-            "text_token_len": text_token_len,
-            "utt_embedding": utt_embedding,
-            "spk_embedding": spk_embedding,
-        }
-        if mode == "inference":
-            tts_text = [sample[i]["tts_text"] for i in order]
-            tts_index = [sample[i]["tts_index"] for i in order]
-            tts_text_token = [torch.tensor(sample[i]["tts_text_token"]) for i in order]
-            tts_text_token_len = torch.tensor(
-                [i.size(0) for i in tts_text_token], dtype=torch.int32
-            )
-            tts_text_token = pad_sequence(
-                tts_text_token, batch_first=True, padding_value=-1
-            )
-            batch.update(
-                {
-                    "tts_text": tts_text,
-                    "tts_index": tts_index,
-                    "tts_text_token": tts_text_token,
-                    "tts_text_token_len": tts_text_token_len,
-                }
-            )
-        if use_spk_embedding is True:
-            batch["embedding"] = batch["spk_embedding"]
-        else:
-            batch["embedding"] = batch["utt_embedding"]
-        yield batch
