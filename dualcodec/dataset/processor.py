@@ -151,8 +151,8 @@ def gluster_opener(data, mode="train", num_epochs=1, manual_dist_sampler=False, 
     Set it to True if the datalist is the same across all procs, and you want distributed sampler.
     Skip the data that does not belong to this proc.
     """
-    if manual_dist_sampler:
-        assert dist.is_initialized(), "Distributed mode requires initialized process group"
+    if manual_dist_sampler and dist.is_initialized():
+        # assert dist.is_initialized(), "Distributed mode requires initialized process group"
         rank = dist.get_rank()  # Get the current process rank
         world_size = dist.get_world_size()  # Total number of processes
         print(f"[Rank {rank}] Initialized with manual_dist_sampler=True. Total processes: {world_size}.")

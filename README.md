@@ -75,15 +75,20 @@ pip install dualcodec[train]
 ```
 2. Clone this repository and `cd` to project root folder.
 
-To run example training on example Emilia German data:
+3. To run example training on example Emilia German data:
 ```bash
-accelerate launch train.py --config-name=codec_train model=dualcodec_12hz_16384_4096_8vq trainer.batch_size=3
+accelerate launch train.py --config-name=codec_train model=dualcodec_12hz_16384_4096_8vq \
+trainer.batch_size=3 \
+data.segment_speech.segment_length=24000
 ```
-This trains from scratch a dualcodec_12hz_16384_4096_8vq model.
+This trains from scratch a dualcodec_12hz_16384_4096_8vq model with a training batch size of 3. (typically you need larger batch sizes)
 
 To train a 25Hz model:
 ```bash
-accelerate launch train.py --config-name=codec_train model=dualcodec_25hz_16384_1024_12vq trainer.batch_size=3
+accelerate launch train.py --config-name=codec_train model=dualcodec_25hz_16384_1024_12vq \
+trainer.batch_size=3 \
+data.segment_speech.segment_length=24000
+
 ```
 
 ## Citation
