@@ -70,6 +70,10 @@ class Inference:
         - device: str, device to run the model
         - autocast: bool, whether to use autocast to fp16 for model inference
         """
+        if not torch.cuda.is_available():
+            warnings.warn("CUDA is not available, running on CPU.")
+            device = "cpu"
+
         self.semantic_cfg = _build_semantic_model(
             dualcodec_path=dualcodec_path,
             semantic_model_path=w2v_path,
