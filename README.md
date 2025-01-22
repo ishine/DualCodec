@@ -3,13 +3,18 @@
 [![arXiv](https://img.shields.io/badge/arXiv-coming_soon-brightgreen.svg?style=flat-square)](https://arxiv.org/)
 [![githubio](https://img.shields.io/badge/GitHub.io-Demo_Page-blue?logo=Github&style=flat-square)](https://zeyuxie29.github.io/PicoAudio.github.io/)
 [![PyPI](https://img.shields.io/pypi/v/dualcodec?color=blue&label=PyPI&logo=PyPI&style=flat-square)](https://pypi.org/project/dualcodec/)
-![GitHub](https://img.shields.io/badge/Github-Dev_Release-pink?logo=Github&style=flat-square)
 ![Amphion](https://img.shields.io/badge/Amphion-Stable_Release-blue?style=flat-square)
-
+![GitHub](https://img.shields.io/badge/Github-Dev_Release-pink?logo=Github&style=flat-square)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1VvUhsDffLdY5TdNuaqlLnYzIoXhvI8MK#scrollTo=Lsos3BK4J-4E)
 
 ## About
 DualCodec is a low-frame-rate (12.5Hz or 25Hz), semantically-enhanced (with SSL feature) Neural Audio Codec designed for efficient Speech Generation.
-You can check out our paper (will be released soon) and our [demo page](https://dualcodec.github.io/).
+You can check out our paper and our [demo page](https://dualcodec.github.io/).
+The overview of DualCodec system is shown in the following figure:
+
+<!-- show dualcodec.png -->
+![DualCodec](dualcodec.png)
+
 
 ## Installation
 ```bash
