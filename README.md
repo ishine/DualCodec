@@ -26,8 +26,9 @@ pip install dualcodec
 ```
 # export HF_ENDPOINT=https://hf-mirror.com      # uncomment this to use huggingface mirror if you're in China
 huggingface-cli download facebook/w2v-bert-2.0 --local-dir w2v-bert-2.0
-huggingface-cli download amphion/dualcodec --local-dir dualcodec_ckpts
+huggingface-cli download amphion/dualcodec dualcodec_12hz_16384_4096.safetensors dualcodec_25hz_16384_1024.safetensors w2vbert2_mean_var_stats_emilia.pt --local-dir dualcodec_ckpts
 ```
+The second command downloads the two DualCodec model (12hz_v1 and 25hz_v1) checkpoints and a w2v-bert-2 mean and variance statistics to the local directory `dualcodec_ckpts`.
 
 ### 2. To inference an audio in a python script: 
 ```python
@@ -67,8 +68,35 @@ See "example.ipynb" for a running example.
 ### DualCodec audio quality
 ### DualCodec-based TTS
 
-## Training DualCodec
-<!-- Stay tuned for the training code release! -->
+## Finetuning DualCodec
+1. Install other necessary components for training:
+```bash
+pip install "dualcodec[train]"
+```
+2. Clone this repository and `cd` to project root folder.
+
+3. Get discriminator checkpoints:
+```bash
+huggingface-cli download amphion/dualcodec --local-dir dualcodec_ckpts
+```
+
+4. To run example training on Emilia German data (streaming, no need to download files. Need to access Huggingface):
+```bash
+accelerate launch train.py --config-name=dualcodec_ft_12hzv1 \
+trainer.batch_size=3 \
+data.segment_speech.segment_length=24000
+```
+This trains from scratch a 12hz_v1 model with a training batch size of 3. (typically you need larger batch sizes)
+
+To finetune a 25Hz_V1 model:
+```bash
+accelerate launch train.py --config-name=dualcodec_ft_25hzv1 \
+trainer.batch_size=3 \
+data.segment_speech.segment_length=24000
+```
+
+
+## Training DualCodec from scratch
 1. Install other necessary components for training:
 ```bash
 pip install dualcodec[train]
@@ -77,7 +105,8 @@ pip install dualcodec[train]
 
 3. To run example training on example Emilia German data:
 ```bash
-accelerate launch train.py --config-name=codec_train model=dualcodec_12hz_16384_4096_8vq \
+accelerate launch train.py --config-name=codec_train \
+model=dualcodec_12hz_16384_4096_8vq \
 trainer.batch_size=3 \
 data.segment_speech.segment_length=24000
 ```
@@ -85,7 +114,8 @@ This trains from scratch a dualcodec_12hz_16384_4096_8vq model with a training b
 
 To train a 25Hz model:
 ```bash
-accelerate launch train.py --config-name=codec_train model=dualcodec_25hz_16384_1024_12vq \
+accelerate launch train.py --config-name=codec_train \
+model=dualcodec_25hz_16384_1024_12vq \
 trainer.batch_size=3 \
 data.segment_speech.segment_length=24000
 
