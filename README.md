@@ -1,7 +1,7 @@
 # DualCodec: A Low-Frame-Rate, Semantically-Enhanced Neural Audio Codec for Speech Generation
 
 [![arXiv](https://img.shields.io/badge/arXiv-coming_soon-brightgreen.svg?style=flat-square)](https://arxiv.org/)
-[![githubio](https://img.shields.io/badge/GitHub.io-Demo_Page-blue?logo=Github&style=flat-square)](https://zeyuxie29.github.io/PicoAudio.github.io/)
+[![githubio](https://img.shields.io/badge/GitHub.io-Demo_Page-blue?logo=Github&style=flat-square)](https://dualcodec.github.io/)
 [![PyPI](https://img.shields.io/pypi/v/dualcodec?color=blue&label=PyPI&logo=PyPI&style=flat-square)](https://pypi.org/project/dualcodec/)
 ![Amphion](https://img.shields.io/badge/Amphion-Stable_Release-blue?style=flat-square)
 ![GitHub](https://img.shields.io/badge/Github-Dev_Release-pink?logo=Github&style=flat-square)
