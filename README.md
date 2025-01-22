@@ -23,7 +23,7 @@ pip install dualcodec
 ```
 
 ## News
-- 2025-01-22: I added training and finetuning instructions for DualCodec, version is v0.3.0.
+- 2025-01-22: I added training and finetuning instructions for DualCodec, as well as a gradio interface. Version is v0.3.0.
 - 2025-01-16: Finished releasing DualCodec inference codes, the version is v0.1.0. Latest versions are synced to pypi.
 
 ## Available models
@@ -46,7 +46,7 @@ huggingface-cli download amphion/dualcodec dualcodec_12hz_16384_4096.safetensors
 ```
 The second command downloads the two DualCodec model (12hz_v1 and 25hz_v1) checkpoints and a w2v-bert-2 mean and variance statistics to the local directory `dualcodec_ckpts`.
 
-### 2. To inference an audio in a python script: 
+### 2. Programmic usage: 
 ```python
 import dualcodec
 
@@ -77,6 +77,13 @@ torchaudio.save("out.wav", out_audio.cpu().squeeze(0), 24000)
 
 See "example.ipynb" for a running example.
 
+### 3. Gradio interface:
+If you want to use the Gradio interface, you can run the following command:
+```bash
+python -m dualcodec.app
+```
+This will launch an app that allows you to upload a wav file and get the output wav file.
+
 ## DualCodec-based TTS models
 We're releasing DualCodec-based TTS models. Stay tuned!
 
@@ -85,7 +92,7 @@ We're releasing DualCodec-based TTS models. Stay tuned!
 ```bash
 pip install "dualcodec[train]"
 ```
-2. Clone this repository and `cd` to project root folder.
+2. Clone this repository and `cd` to the project root folder (the folder that contains this readme).
 
 3. Get discriminator checkpoints:
 ```bash
@@ -98,7 +105,7 @@ accelerate launch train.py --config-name=dualcodec_ft_12hzv1 \
 trainer.batch_size=3 \
 data.segment_speech.segment_length=24000
 ```
-This trains from scratch a 12hz_v1 model with a training batch size of 3. (typically you need larger batch sizes)
+This trains from scratch a 12hz_v1 model with a training batch size of 3. (typically you need larger batch sizes like 10)
 
 To finetune a 25Hz_V1 model:
 ```bash
@@ -113,20 +120,20 @@ data.segment_speech.segment_length=24000
 ```bash
 pip install "dualcodec[train]"
 ```
-2. Clone this repository and `cd` to project root folder.
+2. Clone this repository and `cd` to the project root folder (the folder that contains this readme).
 
 3. To run example training on example Emilia German data:
 ```bash
-accelerate launch train.py --config-name=codec_train \
+accelerate launch train.py --config-name=dualcodec_train \
 model=dualcodec_12hz_16384_4096_8vq \
 trainer.batch_size=3 \
 data.segment_speech.segment_length=24000
 ```
-This trains from scratch a v1_12hz model with a training batch size of 3. (typically you need larger batch sizes)
+This trains from scratch a v1_12hz model with a training batch size of 3. (typically you need larger batch sizes like 10)
 
 To train a v1_25Hz model:
 ```bash
-accelerate launch train.py --config-name=codec_train \
+accelerate launch train.py --config-name=dualcodec_train \
 model=dualcodec_25hz_16384_1024_12vq \
 trainer.batch_size=3 \
 data.segment_speech.segment_length=24000
