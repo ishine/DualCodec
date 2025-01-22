@@ -8,7 +8,8 @@
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1VvUhsDffLdY5TdNuaqlLnYzIoXhvI8MK#scrollTo=Lsos3BK4J-4E)
 
 ## About
-DualCodec is a low-frame-rate (12.5Hz or 25Hz), semantically-enhanced (with SSL feature) Neural Audio Codec designed for efficient Speech Generation.
+DualCodec is a low-frame-rate (12.5Hz or 25Hz), semantically-enhanced (with SSL feature) Neural Audio Codec designed to extract discrete tokens for efficient speech generation.
+
 You can check out our paper and our [demo page](https://dualcodec.github.io/).
 The overview of DualCodec system is shown in the following figure:
 
@@ -23,7 +24,7 @@ pip install dualcodec
 
 ## News
 - 2025-01-22: I added training and finetuning instructions for DualCodec, version is v0.3.0.
-- 2025-01-16: Finished writing DualCodec inference codes, the version is v0.1.0.
+- 2025-01-16: Finished releasing DualCodec inference codes, the version is v0.1.0. Latest versions are synced to pypi.
 
 ## Available models
 <!-- - 12hz_v1: DualCodec model trained with 12Hz sampling rate. 
