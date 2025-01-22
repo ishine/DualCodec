@@ -1,5 +1,6 @@
 defaults:
-  - codec_ft_12hzv1
+  - dualcodec_ft_12hzv1 # inherit configs from dualcodec_ft_12hzv1
+  - override model: dualcodec_25hz_16384_1024_12vq # override model to 25hz
 trainer:
   exp_name: dualcodec_25hzv1_finetune
   args:
