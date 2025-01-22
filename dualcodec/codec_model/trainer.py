@@ -69,9 +69,9 @@ class Trainer(BaseTrainer):
                     )
         self.distill = False
 
-        self.semantic_downsample_factor = 2
-        if hasattr(self.cfg, 'semantic_downsample_factor'):
-            self.semantic_downsample_factor = self.cfg.semantic_downsample_factor
+        self.model_module = self.model
+        if hasattr(self.model, 'module'):
+            self.model_module = self.model.module
 
     
     @torch.no_grad()
@@ -161,7 +161,7 @@ class Trainer(BaseTrainer):
             feat = self._extract_semantic_code(
                 input_features, attention_mask
             ).transpose(1,2)
-            feat = torch.nn.functional.avg_pool1d(feat, self.semantic_downsample_factor, self.semantic_downsample_factor)
+            feat = torch.nn.functional.avg_pool1d(feat, self.model_module.semantic_downsample_factor, self.model_module.semantic_downsample_factor)
             out_dict, semantic_edict = self.model(x_wav, semantic_repr=feat,
                                                 bypass_quantize_rate=0.125,
                                                 possibly_no_quantizer=False, # internal dropout
@@ -260,7 +260,68 @@ class Trainer(BaseTrainer):
         # print(metrics)
 
         return None, metrics
+    def _load_model(
+        self,
+        checkpoint_dir: str = None,
+        checkpoint_path: str = None,
+        resume_type: str = "",
+    ):
+        r"""Load model from checkpoint. If checkpoint_path is None, it will
+        load the latest checkpoint in checkpoint_dir. If checkpoint_path is not
+        None, it will load the checkpoint specified by checkpoint_path. **Only use this
+        method after** ``accelerator.prepare()``.
+        """
+        if checkpoint_path is None:
+            try:
+                all_ckpts = os.listdir(checkpoint_dir)
+                all_ckpts = filter(lambda x: x.startswith("epoch"), all_ckpts)
+                ls = list(all_ckpts)
+                ls = [os.path.join(checkpoint_dir, i) for i in ls]
+                ls.sort(
+                    key=lambda x: int(x.split("_")[-2].split("-")[-1]), reverse=True
+                )
+                checkpoint_path = ls[0]
+                self.logger.info("Resume from {}".format(checkpoint_path))
+            except Exception as e:
+                print(
+                    "Failed to load checkpoint from {}, starting FROM SCRATCH...".format(
+                        checkpoint_dir
+                    )
+                )
+                return None
 
+        if resume_type in ["resume", ""]:
+            # Load all the things, including model weights, optimizer, scheduler, and random states.
+            try:
+                self.accelerator.load_state(input_dir=checkpoint_path)
+            except Exception as e:
+                print(e)
+            # set epoch and step
+            from pathlib import Path
+            
+            self.epoch = int(Path(checkpoint_path).name.split("_")[0].split("-")[-1])
+            if hasattr(self.args, 'reset_steps') and self.args.reset_steps:
+                self.step = 0
+            else:
+                self.step = int(Path(checkpoint_path).name.split("_")[1].split("-")[-1]) + 1
+
+        elif resume_type == "finetune":
+            # Load only the model weights
+            import safetensors.torch
+            safetensors.torch.load_model(
+                self.accelerator.unwrap_model(self.model),
+                os.path.join(checkpoint_path, self.args.model_1_name), # location of "model_1.safetensors"
+            )
+            safetensors.torch.load_model(
+                self.accelerator.unwrap_model(self.discriminator),
+                os.path.join(checkpoint_path, self.args.model_2_name), # location of "model_2.safetensors"
+            )
+            self.logger.info("Loaded model weights for finetune.")
+
+        else:
+            raise ValueError("Resume_type must be `resume` or `finetune`.")
+
+        return checkpoint_path
 
     def _test_step(self, batch):
         raise NotImplementedError
