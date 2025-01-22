@@ -1,6 +1,15 @@
 # DualCodec: A Low-Frame-Rate, Semantically-Enhanced Neural Audio Codec for Speech Generation
 
+[![arXiv](https://img.shields.io/badge/arXiv-coming_soon-brightgreen.svg?style=flat-square)](https://arxiv.org/)
+[![githubio](https://img.shields.io/badge/GitHub.io-Demo_Page-blue?logo=Github&style=flat-square)](https://zeyuxie29.github.io/PicoAudio.github.io/)
+[![PyPI](https://img.shields.io/pypi/v/dualcodec?color=blue&label=PyPI&logo=PyPI&style=flat-square)](https://pypi.org/project/dualcodec/)
+![GitHub](https://img.shields.io/badge/Github-Dev_Release-pink?logo=Github&style=flat-square)
+![Amphion](https://img.shields.io/badge/Amphion-Stable_Release-blue?style=flat-square)
+
+
 ## About
+DualCodec is a low-frame-rate (12.5Hz or 25Hz), semantically-enhanced (with SSL feature) Neural Audio Codec designed for efficient Speech Generation.
+You can check out our paper (will be released soon) and our [demo page](https://dualcodec.github.io/).
 
 ## Installation
 ```bash
@@ -8,7 +17,8 @@ pip install dualcodec
 ```
 
 ## News
-- 2025-01-17: DualCodec inference code is released!
+- 2025-01-22: I added training and finetuning instructions for DualCodec, version is v0.3.0.
+- 2025-01-16: Finished writing DualCodec inference codes, the version is v0.1.0.
 
 ## Available models
 <!-- - 12hz_v1: DualCodec model trained with 12Hz sampling rate. 
@@ -62,11 +72,7 @@ torchaudio.save("out.wav", out_audio.cpu().squeeze(0), 24000)
 See "example.ipynb" for a running example.
 
 ## DualCodec-based TTS models
-### DualCodec-based TTS
-
-## Benchmark results
-### DualCodec audio quality
-### DualCodec-based TTS
+We're releasing DualCodec-based TTS models. Stay tuned!
 
 ## Finetuning DualCodec
 1. Install other necessary components for training:
@@ -99,7 +105,7 @@ data.segment_speech.segment_length=24000
 ## Training DualCodec from scratch
 1. Install other necessary components for training:
 ```bash
-pip install dualcodec[train]
+pip install "dualcodec[train]"
 ```
 2. Clone this repository and `cd` to project root folder.
 
@@ -110,9 +116,9 @@ model=dualcodec_12hz_16384_4096_8vq \
 trainer.batch_size=3 \
 data.segment_speech.segment_length=24000
 ```
-This trains from scratch a dualcodec_12hz_16384_4096_8vq model with a training batch size of 3. (typically you need larger batch sizes)
+This trains from scratch a v1_12hz model with a training batch size of 3. (typically you need larger batch sizes)
 
-To train a 25Hz model:
+To train a v1_25Hz model:
 ```bash
 accelerate launch train.py --config-name=codec_train \
 model=dualcodec_25hz_16384_1024_12vq \
