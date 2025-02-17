@@ -1,10 +1,7 @@
 [project]
 name = "dualcodec"
-version = "0.3.2"
+version = "0.3.3"
 description = "The DualCodec neural audio codec."
-authors = [
-    {name = "Jiaqi Li", email = "jiaqili3@link.cuhk.edu.cn"},
-]
 dependencies = [
     "transformers>=4.30.0",
     "descript-audio-codec",

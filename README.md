@@ -1,4 +1,4 @@
-# DualCodec: A Low-Frame-Rate, Semantically-Enhanced Neural Audio Codec for Speech Generation
+<!-- # DualCodec: A Low-Frame-Rate, Semantically-Enhanced Neural Audio Codec for Speech Generation
 
 [![arXiv](https://img.shields.io/badge/arXiv-coming_soon-brightgreen.svg?style=flat-square)](https://arxiv.org/)
 [![githubio](https://img.shields.io/badge/GitHub.io-Demo_Page-blue?logo=Github&style=flat-square)](https://dualcodec.github.io/)
@@ -99,13 +99,13 @@ pip install "dualcodec[train]"
 huggingface-cli download amphion/dualcodec --local-dir dualcodec_ckpts
 ```
 
-4. To run example training on Emilia German data (streaming, no need to download files. Need to access Huggingface):
+4. To run example finetuning on Emilia German data (streaming, no need to download files. Need network access to Huggingface):
 ```bash
 accelerate launch train.py --config-name=dualcodec_ft_12hzv1 \
 trainer.batch_size=3 \
 data.segment_speech.segment_length=24000
 ```
-This trains from scratch a 12hz_v1 model with a training batch size of 3. (typically you need larger batch sizes like 10)
+This finetunes a 12hz_v1 model with a training batch size of 3. (typically you need larger batch sizes like 10)
 
 To finetune a 25Hz_V1 model:
 ```bash
@@ -140,4 +140,4 @@ data.segment_speech.segment_length=24000
 
 ```
 
-## Citation
+## Citation -->
