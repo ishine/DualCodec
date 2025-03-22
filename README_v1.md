@@ -142,5 +142,11 @@ data.segment_speech.segment_length=24000
 
 ```
 
+## DualCodec-TTS
+
+FAQ
+pip install -U wandb protobuf
+pip install -U transformers
+
 ## Citation
 

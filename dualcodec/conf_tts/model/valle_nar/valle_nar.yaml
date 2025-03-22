@@ -1,5 +1,5 @@
 model:
-  _target_: dualcodec.model_tts.valle_nar_model.ValleNAR
+  _target_: dualcodec.model_tts.valle_nar.valle_nar_model.ValleNAR
   phone_vocab_size: 51866
   first_layer_vocab_size: 16384
   target_vocab_size: 4096

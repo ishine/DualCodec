@@ -11,7 +11,7 @@ import os
 import torch.nn as nn
 from typing import List, Optional, Tuple, Union
 
-from transformers.models.llama.modeling_llama import LlamaDecoderLayer
+from .modeling_llama import LlamaDecoderLayer
 
 # Config below abandoned, passed by ValleNAR.init()
 # NUM_QUANTIZERS = 8 # number of quantizers in total, currently assumes first layer AR.

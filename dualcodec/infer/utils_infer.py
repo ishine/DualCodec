@@ -58,6 +58,24 @@ fix_duration = None
 
 # -----------------------------------------
 
+# instantiate model from hydra, the config file should be relative to the calling file
+def instantiate_model(model_cfg_path):
+    """
+    Instantiate a model from a given configuration file using Hydra.
+    Args:
+        model_cfg_path (str): Path to the model configuration file.
+    Returns:
+        model: The instantiated model.
+    """
+    import hydra
+    # instantiate model
+    from pathlib import Path
+    model_cfg_path = Path(model_cfg_path)
+    with hydra.initialize(config_path=str(model_cfg_path.parent)):
+        cfg = hydra.compose(config_name=str(model_cfg_path.name))
+    model = hydra.utils.instantiate(cfg.model)
+    return model
+
 
 # chunk text into smaller pieces
 
@@ -177,6 +195,10 @@ def transcribe(ref_audio, language=None):
 
 
 def load_checkpoint(model, ckpt_path, device: str, dtype=None, use_ema=True):
+    from cached_path import cached_path
+    ckpt_path = str(cached_path(ckpt_path))
+
+
     if dtype is None:
         dtype = (
             torch.float16

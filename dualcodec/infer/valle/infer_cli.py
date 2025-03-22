@@ -14,9 +14,9 @@ from omegaconf import OmegaConf
 from loguru import logger
 from cached_path import cached_path
 import hydra
+from pathlib import Path
 
-
-from dualcodec.infer.valle.utils_infer import (
+from dualcodec.infer.utils_infer import (
     mel_spec_type,
     target_rms,
     cross_fade_duration,
@@ -28,8 +28,11 @@ from dualcodec.infer.valle.utils_infer import (
     infer_process,
     load_model,
     load_vocoder,
+    load_checkpoint,
+    instantiate_model,
     preprocess_ref_audio_text,
     remove_silence_for_generated_wav,
+    device,
 )
 
 parser = argparse.ArgumentParser(
@@ -163,7 +166,9 @@ args = parser.parse_args()
 
 # config file
 
-config = tomli.load(open(args.config, "rb"))
+# config = tomli.load(open(args.config, "rb"))
+config = {}
+
 
 
 # command-line interface parameters
@@ -173,33 +178,29 @@ def load_dualcodec_valle_ar_12hzv1():
         "model": "valle_ar",
         "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_ar_12hzv1.safetensors",
         # "ckpt_path": "dualcodec_tts_ckpts/dualcodec_valle_ar_12hzv1.safetensors",
-        "cfg_path": "conf_tts/model/valle_ar/llama_250M.yaml"
+        "cfg_path": "../conf_tts/model/valle_ar/llama_250M.yaml"
     }
-    model_cfg_path = TTS_MODEL_CFG["cfg_path"]
-    # instantiate model
-    with hydra.initialize(config_path=model_cfg_path):
-        cfg = hydra.compose(config_name=model_cfg_path)
-    model = hydra.utils.instantiate(cfg.model)
+    model = instantiate_model(
+        model_cfg_path=TTS_MODEL_CFG["cfg_path"],
+    )
     ckpt_path = TTS_MODEL_CFG["ckpt_path"]
-    load_checkpoint(model, ckpt_path, use_ema=False)
+    load_checkpoint(model, ckpt_path, use_ema=False, device=device,)
     return model
 def load_dualcodec_valle_nar_12hzv1():
     TTS_MODEL_CFG = {
         "model": "valle_nar",
         "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_nar_12hzv1.safetensors",
         # "ckpt_path": "dualcodec_tts_ckpts/dualcodec_valle_ar_12hzv1.safetensors",
-        "cfg_path": "conf_tts/model/valle_nar/valle_nar.yaml"
+        "cfg_path": "../conf_tts/model/valle_nar/valle_nar.yaml"
     }
-    model_cfg_path = TTS_MODEL_CFG["cfg_path"]
-    # instantiate model
-    with hydra.initialize(config_path=model_cfg_path):
-        cfg = hydra.compose(config_name=model_cfg_path)
-    model = hydra.utils.instantiate(cfg.model)
+    model = instantiate_model(
+        model_cfg_path=TTS_MODEL_CFG["cfg_path"],
+    )
     ckpt_path = TTS_MODEL_CFG["ckpt_path"]
-    load_checkpoint(model, ckpt_path, use_ema=False)
+    load_checkpoint(model, ckpt_path, use_ema=False, device=device,)
     return model
 
-ar_model = load_dualcodec_valle_12hzv1()
+ar_model = load_dualcodec_valle_ar_12hzv1()
 nar_model = load_dualcodec_valle_nar_12hzv1()
 
 ref_audio = args.ref_audio or config.get("ref_audio", "infer/examples/basic/example_wav_en.wav")

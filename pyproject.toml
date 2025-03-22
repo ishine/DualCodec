@@ -26,10 +26,8 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [project.optional-dependencies]
-train = [
+tts = [
+    "f5_tts",
     "accelerate>=1.0",
     "datasets",
-]
-tts = [
-    
 ]
