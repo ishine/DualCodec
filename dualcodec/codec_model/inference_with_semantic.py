@@ -112,7 +112,7 @@ class Inference:
 
         feature_extractor = self.semantic_cfg.feature_extractor
         inputs = feature_extractor(
-            audio_16k, sampling_rate=16000, return_tensors="pt"
+            audio_16k.cpu(), sampling_rate=16000, return_tensors="pt"
         )
         input_features = inputs["input_features"][0]
         attention_mask = inputs["attention_mask"][0]
@@ -138,7 +138,22 @@ class Inference:
             semantic_codes, acoustic_codes = self.model.encode(audio, num_quantizers=n_quantizers, semantic_repr=feat)
         
         return semantic_codes, acoustic_codes
-        
+    
+    def decode_from_codes(
+        self,
+        semantic_codes,
+        acoustic_codes,
+    ):
+        """
+        Args:
+        - semantic_codes: torch.Tensor, shape=(B, 1, T), dtype=torch.int, semantic codes
+        - acoustic_codes: torch.Tensor, shape=(B, num_vq-1, T), dtype=torch.int, acoustic codes
+        Returns:
+        - audio: torch.Tensor, shape=(B, 1, T), dtype=torch.float32, output audio waveform
+        """
+        audio = self.model.decode_from_codes(semantic_codes, acoustic_codes).to(torch.float32)
+        return audio
+
     @torch.no_grad()
     def decode(self, semantic_codes, acoustic_codes):
         """

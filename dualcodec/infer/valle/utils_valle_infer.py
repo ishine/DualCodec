@@ -8,6 +8,7 @@ from dualcodec.utils.utils_infer import (
 from dualcodec.utils import normalize_text
 from concurrent.futures import ThreadPoolExecutor
 from loguru import logger
+from einops import rearrange
 # -----------------------------------------
 
 target_sample_rate = 24000
@@ -131,7 +132,7 @@ def infer_batch_process(
 
         # inference
         with torch.inference_mode():
-            generated, prompt_semantic_code, prompt_acoustic_code = valle_ar_inference(
+            generated, prompt_semantic_code, prompt_acoustic_code, prompt_text_tokens = valle_ar_inference(
                 ar_model_obj=ar_model_obj,
                 dualcodec_inference_obj=dualcodec_inference_obj,
                 tokenizer=tokenizer_obj,
@@ -147,7 +148,17 @@ def infer_batch_process(
             )
 
             # nar sampling
-            pass
+            combine_semantic_code = torch.cat([prompt_semantic_code.squeeze(1), generated], dim=-1)
+            generated = valle_nar_inference(
+                nar_model_obj=nar_model_obj,
+                dualcodec_inference_obj=dualcodec_inference_obj,
+                combine_semantic_code=combine_semantic_code,
+                prompt_acoustic_code=prompt_acoustic_code,
+                prompt_text_tokens=prompt_text_tokens,
+                use_text_prompt=True,
+                prompt_language=lang,
+                device=device,
+            )
 
             generated = generated.to(torch.float32)  # generated mel spectrogram
             generated = generated[:, ref_audio_len:, :]
@@ -267,14 +278,14 @@ def valle_ar_inference(
         ],
         dtype=torch.int32,
         device=device,
-    )
+    ) # [B, T]
     prompt_text_len = torch.tensor(
         [prompt_text_tokens.shape[-1]], device=device
     )
 
     # prompt semantic codes
     prompt_semantic_code, prompt_acoustic_code = dualcodec_inference_obj.encode(
-        prompt_speech,
+        prompt_speech.reshape(1,1,-1),
     )
     # semantic_codes shape: torch.Size([1, 1, T])
     # acoustic_codes shape: torch.Size([1, n_quantizers-1, T])
@@ -292,6 +303,51 @@ def valle_ar_inference(
         temperature=temperature,
     )
     if return_prompt:
-        return out, prompt_semantic_code, prompt_acoustic_code
+        # out: [B, T], prompt_semantic_code: [1, 1, T], prompt_acoustic_code: [1, n_quantizers-1, T]
+        return out, prompt_semantic_code, prompt_acoustic_code, prompt_text_tokens
     else:
         return out #, ret_semantic_code
+
+@torch.inference_mode()
+def valle_nar_inference(
+    nar_model_obj,
+    dualcodec_inference_obj,
+    combine_semantic_code, # shape [b t]
+    prompt_acoustic_code, # shape [1, q, t]
+    prompt_text_tokens=None,
+    use_text_prompt=True,
+    prompt_language='en',
+    device='cuda',
+):
+    if prompt_text_tokens is not None:
+        prompt_text_mask = torch.ones(1, prompt_text_tokens.shape[-1], device=device)
+    else:
+        B = 1
+        prompt_text_tokens = torch.zeros(B, 1, dtype=torch.long).to(device)
+        prompt_text_mask = torch.ones(B, 1, dtype=torch.long).to(device)
+    acoustic_code = rearrange(prompt_acoustic_code, 'b q t -> q b t')
+
+    combine_semantic_code = rearrange(combine_semantic_code, 'b t -> b 1 t')
+    out = nar_model_obj.sample_hf(
+        phone_ids=prompt_text_tokens, #[B, T]
+        phone_mask=prompt_text_mask,
+        prompt_ids=acoustic_code, # [8,B,T]
+        first_stage_ids=combine_semantic_code,
+        use_text_prompt=use_text_prompt,
+        # target_quantization_layer=1+i%6,
+    )
+
+    print(out)
+    
+    predict_full = out[1:]
+
+    # assert (predict_full >= 0).all()
+    # assert (predict_full < 4096).all()
+
+    combine_semantic_code = rearrange(combine_semantic_code, 'b t -> b 1 t')
+    predict_full = rearrange(predict_full, 'q b t -> b q t')
+
+    combine_audio = dualcodec_inference_obj.decode(
+        combine_semantic_code, predict_full
+    )
+    return combine_audio
