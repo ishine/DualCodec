@@ -183,7 +183,7 @@ def load_dualcodec_valle_ar_12hzv1():
     }
     model = instantiate_model(
         model_cfg_path=TTS_MODEL_CFG["cfg_path"],
-    ).half()
+    ).half().eval()
     ckpt_path = TTS_MODEL_CFG["ckpt_path"]
     load_checkpoint(model, ckpt_path, use_ema=False, device=device,)
     return model
@@ -196,7 +196,7 @@ def load_dualcodec_valle_nar_12hzv1():
     }
     model = instantiate_model(
         model_cfg_path=TTS_MODEL_CFG["cfg_path"],
-    ).half()
+    ).half().eval()
     ckpt_path = TTS_MODEL_CFG["ckpt_path"]
     load_checkpoint(model, ckpt_path, use_ema=False, device=device,)
     return model

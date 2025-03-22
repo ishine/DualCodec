@@ -9,6 +9,7 @@ from dualcodec.utils import normalize_text
 from concurrent.futures import ThreadPoolExecutor
 from loguru import logger
 from einops import rearrange
+import numpy as np
 # -----------------------------------------
 
 target_sample_rate = 24000
@@ -131,55 +132,63 @@ def infer_batch_process(
         # final_text_list = convert_char_to_pinyin(text_list)
 
         # inference
-        with torch.inference_mode():
-            generated, prompt_semantic_code, prompt_acoustic_code, prompt_text_tokens = valle_ar_inference(
-                ar_model_obj=ar_model_obj,
-                dualcodec_inference_obj=dualcodec_inference_obj,
-                tokenizer=tokenizer_obj,
-                text=final_text,
-                prompt_speech=audio,
-                prompt_language=lang,
-                top_k=top_k,
-                top_p=top_p,
-                temperature=temperature,
-                repeat_penalty=repeat_penalty,
-                return_prompt=True,
-                device=device,
-            )
+        with torch.autocast(device_type=device, dtype=torch.float16):
+            with torch.inference_mode():
+                generated, prompt_semantic_code, prompt_acoustic_code, prompt_text_tokens = valle_ar_inference(
+                    ar_model_obj=ar_model_obj,
+                    dualcodec_inference_obj=dualcodec_inference_obj,
+                    tokenizer=tokenizer_obj,
+                    text=final_text,
+                    prompt_speech=audio,
+                    prompt_language=lang,
+                    top_k=top_k,
+                    top_p=top_p,
+                    temperature=temperature,
+                    repeat_penalty=repeat_penalty,
+                    return_prompt=True,
+                    device=device,
+                )
 
-            # nar sampling
-            combine_semantic_code = torch.cat([prompt_semantic_code.squeeze(1), generated], dim=-1)
-            generated = valle_nar_inference(
-                nar_model_obj=nar_model_obj,
-                dualcodec_inference_obj=dualcodec_inference_obj,
-                combine_semantic_code=combine_semantic_code,
-                prompt_acoustic_code=prompt_acoustic_code,
-                prompt_text_tokens=prompt_text_tokens,
-                use_text_prompt=True,
-                prompt_language=lang,
-                device=device,
-            )
+                # nar sampling
+                combine_semantic_code = torch.cat([prompt_semantic_code.squeeze(1), generated], dim=-1)
+                generated = valle_nar_inference(
+                    nar_model_obj=nar_model_obj,
+                    dualcodec_inference_obj=dualcodec_inference_obj,
+                    combine_semantic_code=combine_semantic_code,
+                    prompt_acoustic_code=prompt_acoustic_code,
+                    prompt_text_tokens=prompt_text_tokens,
+                    use_text_prompt=True,
+                    prompt_language=lang,
+                    device=device,
+                ) # [1,1,T]
 
-            generated = generated.to(torch.float32)  # generated mel spectrogram
-            generated = generated[:, ref_audio_len:, :]
-            generated = generated.permute(0, 2, 1)
-            if mel_spec_type == "vocos":
-                generated_wave = vocoder.decode(generated)
-            elif mel_spec_type == "bigvgan":
-                generated_wave = vocoder(generated)
-            if rms < target_rms:
-                generated_wave = generated_wave * rms / target_rms
+                generated = generated.to(torch.float32)  # generated mel spectrogram
+                
+                # wav -> numpy
+                generated_wave = generated_wave.squeeze().cpu().numpy()
 
-            # wav -> numpy
-            generated_wave = generated_wave.squeeze().cpu().numpy()
+                # get spectrogram
+                generated = torchaudio.transforms.MelSpectrogram(
+                    sample_rate=target_sample_rate,
+                    n_fft=n_fft,
+                    win_length=win_length,
+                    hop_length=hop_length,
+                    n_mels=n_mel_channels,
+                    f_min=0,
+                    f_max=target_sample_rate // 2,
+                    pad=0,
+                    power=1,
+                    norm="slaney",
+                    mel_scale=mel_spec_type,
+                )(generated) # [B,H,T]
 
-            if streaming:
-                for j in range(0, len(generated_wave), chunk_size):
-                    yield generated_wave[j : j + chunk_size], target_sample_rate
-            else:
-                generated_cpu = generated[0].cpu().numpy()
-                del generated
-                yield generated_wave, generated_cpu
+                if streaming:
+                    for j in range(0, len(generated_wave), chunk_size):
+                        yield generated_wave[j : j + chunk_size], target_sample_rate
+                else:
+                    generated_cpu = generated[0].cpu().numpy()
+                    del generated
+                    yield generated_wave, generated_cpu
 
     if streaming:
         for gen_text in progress.tqdm(gen_text_batches) if progress is not None else gen_text_batches:
@@ -291,7 +300,7 @@ def valle_ar_inference(
     # acoustic_codes shape: torch.Size([1, n_quantizers-1, T])
 
     out = ar_model_obj.inference(
-        text=prompt_text_tokens,
+        text=prompt_text_tokens.clone(),
         text_len=prompt_text_len,
         prompt_text=None,
         prompt_text_len=None,
@@ -320,29 +329,26 @@ def valle_nar_inference(
     device='cuda',
 ):
     if prompt_text_tokens is not None:
-        prompt_text_mask = torch.ones(1, prompt_text_tokens.shape[-1], device=device)
+        prompt_text_mask = torch.ones(1, prompt_text_tokens.shape[-1], device=device, dtype=torch.bool)
     else:
         B = 1
         prompt_text_tokens = torch.zeros(B, 1, dtype=torch.long).to(device)
-        prompt_text_mask = torch.ones(B, 1, dtype=torch.long).to(device)
-    acoustic_code = rearrange(prompt_acoustic_code, 'b q t -> q b t')
+        prompt_text_mask = torch.zeros(B, 1, dtype=torch.bool).to(device)
+    prompt_acoustic_code = rearrange(prompt_acoustic_code, 'b q t -> q b t')
+    prompt_semantic_code = combine_semantic_code[:, :prompt_acoustic_code.shape[-1]]
+    prompt_semantic_code = rearrange(prompt_semantic_code, 'b t -> 1 b t')
+    prompt_acoustic_code = torch.cat([prompt_semantic_code, prompt_acoustic_code], dim=0)
 
-    combine_semantic_code = rearrange(combine_semantic_code, 'b t -> b 1 t')
     out = nar_model_obj.sample_hf(
         phone_ids=prompt_text_tokens, #[B, T]
         phone_mask=prompt_text_mask,
-        prompt_ids=acoustic_code, # [8,B,T]
+        prompt_ids=prompt_acoustic_code, # [8,B,T]
         first_stage_ids=combine_semantic_code,
         use_text_prompt=use_text_prompt,
         # target_quantization_layer=1+i%6,
     )
 
-    print(out)
-    
     predict_full = out[1:]
-
-    # assert (predict_full >= 0).all()
-    # assert (predict_full < 4096).all()
 
     combine_semantic_code = rearrange(combine_semantic_code, 'b t -> b 1 t')
     predict_full = rearrange(predict_full, 'q b t -> b q t')
@@ -350,4 +356,4 @@ def valle_nar_inference(
     combine_audio = dualcodec_inference_obj.decode(
         combine_semantic_code, predict_full
     )
-    return combine_audio
+    return combine_audio # [1, 1, T]

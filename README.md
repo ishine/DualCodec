@@ -87,7 +87,15 @@ python -m dualcodec.app
 This will launch an app that allows you to upload a wav file and get the output wav file.
 
 ## DualCodec-based TTS models
-We're releasing DualCodec-based TTS models. Stay tuned!
+### DualCodec-VALLE
+DualCodec-VALLE is a TTS model based on DualCodec. It is trained with 12Hz sampling rate and 8 quantizers. The model is trained on 100K hours of Emilia data.
+The scripts will auto
+#### CLI Inference
+
+FAQ
+pip install -U wandb protobuf
+pip install -U transformers
+
 
 ## Finetuning DualCodec
 1. Install other necessary components for training:
@@ -141,12 +149,6 @@ trainer.batch_size=3 \
 data.segment_speech.segment_length=24000
 
 ```
-
-## DualCodec-TTS
-
-FAQ
-pip install -U wandb protobuf
-pip install -U transformers
 
 ## Citation
 

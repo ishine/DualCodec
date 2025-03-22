@@ -542,14 +542,14 @@ class ValleNAR(nn.Module):
     ):
         """
         phone_ids: [B, T]
-        phone_mask: [B, T]
+        phone_mask: [B, T]. 1 for phone, 0 for padding
         target_ids: [8,B,T]
         target_mask: [B, T]
         dropout: rate of dropping out the target tokens
         """
         # assert (target_ids < 4096).all(), "target_ids should be less than 4096"
-        phone_ids = phone_ids + self.target_vocab_size
-        phone_ids = phone_ids * phone_mask + ~phone_mask * self.pad_token_id
+        # phone_ids = phone_ids + self.target_vocab_size
+        phone_ids = phone_ids * phone_mask + ~phone_mask.to(torch.bool) * self.pad_token_id
         # assert (phone_ids >= 1024).all(), "phone_ids should be greater than 1024"
         # breakpoint()
         phone_ids, phone_mask, phone_label = self.add_phone_eos_bos_label(
@@ -566,7 +566,7 @@ class ValleNAR(nn.Module):
         )  # [B, T, H]
 
         if prompt_len is not None:
-            assert not self.training  # vscode-remote://icoding%2B615692.icoding.baidu-int.com/ssd2/lijiaqi18/AmphionVALLEv2-main/models/tts/valle_v2/valle_inference.pynce stage fix prompt len to input
+            assert not self.training 
             NUM_PROMPT_TOKENS = prompt_len
         else:
             assert self.training
@@ -716,7 +716,6 @@ class ValleNAR(nn.Module):
     ):
         # phone_ids: [B, T]
         # phone_mask: [B, T]
-
         phone_ids = phone_ids + self.target_vocab_size * phone_mask
 
         phone_ids = phone_ids * phone_mask
