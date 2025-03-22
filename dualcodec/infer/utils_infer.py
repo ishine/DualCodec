@@ -363,7 +363,7 @@ def infer_process(
     ref_text,
     gen_text,
     model_obj,
-    vocoder,
+    vocoder=None,
     mel_spec_type=mel_spec_type,
     show_info=print,
     progress=tqdm,
