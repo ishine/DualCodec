@@ -54,9 +54,6 @@ def prepare_model():
 @torch.cuda.amp.autocast()
 def _extract_semantic_code(self, input_features, attention_mask):
     """
-        从输入特征中提取语义编码。
-    该函数不需要梯度，因此被标记为@torch.no_grad().
-
     Args:
         input_features (torch.Tensor, shape=(B, T, C)): 输入特征，其中B是batch size，T是时间维度，C是通道维度。
         attention_mask (torch.Tensor, shape=(B, T)): 注意力掩码，其中元素为0表示对应位置的特征无效，非0表示有效。

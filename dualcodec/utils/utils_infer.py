@@ -38,6 +38,8 @@ device = (
     if torch.backends.mps.is_available()
     else "cpu"
 )
+from pathlib import Path
+package_dir = Path(__file__).resolve().parent.parent
 
 # -----------------------------------------
 
@@ -71,7 +73,8 @@ def instantiate_model(model_cfg_path):
     # instantiate model
     from pathlib import Path
     model_cfg_path = Path(model_cfg_path)
-    with hydra.initialize(config_path=str(model_cfg_path.parent)):
+    with hydra.initialize(config_path=str(model_cfg_path.parent), version_base="1.2"):
+        # Load the configuration file
         cfg = hydra.compose(config_name=str(model_cfg_path.name))
     model = hydra.utils.instantiate(cfg.model)
     return model
@@ -376,7 +379,6 @@ def preprocess_ref_audio_text(ref_audio_orig, ref_text, clip_short=True, show_in
 
     return ref_audio, ref_text
 
-
 # infer process: chunk text -> infer batches [i.e. infer_batch_process()]
 
 
@@ -385,7 +387,7 @@ def infer_process(
     ref_text,
     gen_text,
     model_obj,
-    vocoder=None,
+    vocoder,
     mel_spec_type=mel_spec_type,
     show_info=print,
     progress=tqdm,
@@ -426,11 +428,7 @@ def infer_process(
             device=device,
         )
     )
-
-
-# infer batches
-
-
+# infer process: chunk text -> infer batches [i.e. infer_batch_process()]
 def infer_batch_process(
     ref_audio,
     ref_text,
@@ -578,6 +576,8 @@ def infer_batch_process(
 
         else:
             yield None, target_sample_rate, None
+
+
 
 
 # remove silence from generated wav

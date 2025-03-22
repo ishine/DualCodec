@@ -54,13 +54,13 @@ def _build_semantic_model(dualcodec_path, meanvar_fname="w2vbert2_mean_var_stats
         "std": semantic_std,
         "feature_extractor": w2v_feat_extractor,
     })
-
+from cached_path import cached_path
 class Inference:
     """
     Inference class for DualCodec.
     """
     def __init__(
-        self, dualcodec_model, dualcodec_path, w2v_path="facebook/w2v-bert-2.0", device="cuda", autocast=True, **kwargs
+        self, dualcodec_model, dualcodec_path=cached_path("hf://amphion/dualcodec"), w2v_path=cached_path("hf://facebook/w2v-bert-2.0"), device="cuda", autocast=True, **kwargs
     ) -> None:
         """
         Inputs:

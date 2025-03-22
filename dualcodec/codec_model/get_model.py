@@ -8,7 +8,8 @@ model_id_to_cfgname = {
     "25hz_v1": "dualcodec_25hz_16384_1024_12vq.yaml",
 }
 
-def get_model(model_id="12hz_v1", pretrained_model_path=None):
+from cached_path import cached_path
+def get_model(model_id="12hz_v1", pretrained_model_path=cached_path("hf://amphion/dualcodec")):
     import os
     # import importlib.resources as pkg_resources
     # conf_dir = pkg_resources.files("dualcodec") / "conf/model"

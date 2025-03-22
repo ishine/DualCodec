@@ -16,7 +16,7 @@ from cached_path import cached_path
 import hydra
 from pathlib import Path
 
-from dualcodec.infer.utils_infer import (
+from dualcodec.utils.utils_infer import (
     mel_spec_type,
     target_rms,
     cross_fade_duration,
@@ -25,7 +25,6 @@ from dualcodec.infer.utils_infer import (
     sway_sampling_coef,
     speed,
     fix_duration,
-    infer_process,
     load_model,
     load_vocoder,
     load_checkpoint,
@@ -33,7 +32,9 @@ from dualcodec.infer.utils_infer import (
     preprocess_ref_audio_text,
     remove_silence_for_generated_wav,
     device,
+    package_dir,
 )
+from dualcodec.infer.valle.utils_valle_infer import infer_process
 
 parser = argparse.ArgumentParser(
     prog="python3 infer-cli.py",
@@ -182,28 +183,36 @@ def load_dualcodec_valle_ar_12hzv1():
     }
     model = instantiate_model(
         model_cfg_path=TTS_MODEL_CFG["cfg_path"],
-    )
+    ).half()
     ckpt_path = TTS_MODEL_CFG["ckpt_path"]
     load_checkpoint(model, ckpt_path, use_ema=False, device=device,)
     return model
 def load_dualcodec_valle_nar_12hzv1():
     TTS_MODEL_CFG = {
         "model": "valle_nar",
-        "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_nar_12hzv1.safetensors",
-        # "ckpt_path": "dualcodec_tts_ckpts/dualcodec_valle_ar_12hzv1.safetensors",
+        "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_nar_dualcodec12hzv1.safetensors",
+        # "ckpt_path": "dualcodec_tts_ckpts/dualcodec_valle_ar_dualcodec12hzv1.safetensors",
         "cfg_path": "../conf_tts/model/valle_nar/valle_nar.yaml"
     }
     model = instantiate_model(
         model_cfg_path=TTS_MODEL_CFG["cfg_path"],
-    )
+    ).half()
     ckpt_path = TTS_MODEL_CFG["ckpt_path"]
     load_checkpoint(model, ckpt_path, use_ema=False, device=device,)
     return model
 
+logger.info("Loading Valle models...")
 ar_model = load_dualcodec_valle_ar_12hzv1()
 nar_model = load_dualcodec_valle_nar_12hzv1()
+from dualcodec.utils import get_whisper_tokenizer
+tokenizer_model = get_whisper_tokenizer()
+import dualcodec
+dualcodec_model = dualcodec.get_model("12hz_v1")
+dualcodec_inference_obj = dualcodec.Inference(dualcodec_model=dualcodec_model, device=device, autocast=True)
+logger.info("Valle models loaded.")
 
-ref_audio = args.ref_audio or config.get("ref_audio", "infer/examples/basic/example_wav_en.wav")
+
+ref_audio = args.ref_audio or config.get("ref_audio", f"{package_dir}/infer/examples/basic/example_wav_en.wav")
 ref_text = (
     args.ref_text
     if args.ref_text is not None
@@ -306,20 +315,21 @@ def main():
         ref_text_ = voices[voice]["ref_text"]
         gen_text_ = text.strip()
         print(f"Voice: {voice}")
-        audio_segment, final_sample_rate, spectragram = infer_process(
-            ref_audio_,
-            ref_text_,
-            gen_text_,
-            ema_model,
-            vocoder,
-            mel_spec_type=vocoder_name,
+        audio_segment, final_sample_rate, spectrogram = infer_process(
+            ar_model_obj=ar_model,
+            nar_model_obj=nar_model,
+            dualcodec_inference_obj=dualcodec_inference_obj,
+            tokenizer_obj=tokenizer_model,
+            ref_audio=ref_audio_,
+            ref_text=ref_text_,
+            gen_text=gen_text_,
             target_rms=target_rms,
             cross_fade_duration=cross_fade_duration,
-            nfe_step=nfe_step,
-            cfg_strength=cfg_strength,
-            sway_sampling_coef=sway_sampling_coef,
-            speed=speed,
-            fix_duration=fix_duration,
+            streaming=False,
+            top_k=15,
+            top_p=0.85,
+            temperature=1.0,
+            repeat_penalty=1.1,
         )
         generated_audio_segments.append(audio_segment)
 

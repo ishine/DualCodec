@@ -1,0 +1,297 @@
+from dualcodec.utils.utils_infer import (
+    tqdm,
+    device,
+    cross_fade_duration,
+    torch, torchaudio,
+    chunk_text,
+)
+from dualcodec.utils import normalize_text
+from concurrent.futures import ThreadPoolExecutor
+from loguru import logger
+# -----------------------------------------
+
+target_sample_rate = 24000
+n_mel_channels = 100
+hop_length = 256
+win_length = 1024
+n_fft = 1024
+mel_spec_type = "vocos"
+target_rms = 0.1
+cross_fade_duration = 0.15
+ode_method = "euler"
+nfe_step = 32  # 16, 32
+cfg_strength = 2.0
+sway_sampling_coef = -1.0
+speed = 1.0
+fix_duration = None
+
+
+def infer_process(
+    ref_audio,
+    ref_text,
+    gen_text,
+    ar_model_obj,
+    nar_model_obj,
+    dualcodec_inference_obj,
+    tokenizer_obj,
+    show_info=print,
+    progress=tqdm,
+    cross_fade_duration=cross_fade_duration,
+    target_rms=target_rms,
+    lang='en',
+    device=device,
+    streaming=False,
+    top_k=15,
+    top_p=0.85,
+    temperature=1.0,
+    repeat_penalty=1.1,
+):
+    # Split the input text into batches
+    audio, sr = torchaudio.load(ref_audio)
+    max_chars = int(len(ref_text.encode("utf-8")) / (audio.shape[-1] / sr) * (22 - audio.shape[-1] / sr))
+    gen_text_batches = chunk_text(gen_text, max_chars=max_chars)
+    for i, gen_text in enumerate(gen_text_batches):
+        print(f"gen_text {i}", gen_text)
+    print("\n")
+
+    show_info(f"Generating audio in {len(gen_text_batches)} batches...")
+    return next(
+        infer_batch_process(
+            (audio, sr),
+            ref_text,
+            gen_text_batches,
+            ar_model_obj,
+            nar_model_obj,
+            dualcodec_inference_obj=dualcodec_inference_obj,
+            tokenizer_obj=tokenizer_obj,
+            progress=progress,
+            cross_fade_duration=cross_fade_duration,
+            target_rms=target_rms,
+            device=device,
+            lang=lang,
+            streaming=streaming,
+            top_k=top_k,
+            top_p=top_p,
+            temperature=temperature,
+            repeat_penalty=repeat_penalty,
+        )
+    )
+
+
+# infer batches
+
+def infer_batch_process(
+    ref_audio,
+    ref_text,
+    gen_text_batches,
+    ar_model_obj,
+    nar_model_obj,
+    dualcodec_inference_obj,
+    tokenizer_obj,
+    target_rms=0.1,
+    progress=tqdm,
+    cross_fade_duration=0.15,
+    device='cuda',
+    streaming=False,
+    chunk_size=2048,
+    lang='en',
+    top_k=15,
+    top_p=0.85,
+    temperature=1.0,
+    repeat_penalty=1.1,
+):
+    audio, sr = ref_audio
+    if audio.shape[0] > 1:
+        audio = torch.mean(audio, dim=0, keepdim=True)
+
+    rms = torch.sqrt(torch.mean(torch.square(audio)))
+    if rms < target_rms:
+        audio = audio * target_rms / rms
+    if sr != target_sample_rate:
+        resampler = torchaudio.transforms.Resample(sr, target_sample_rate)
+        audio = resampler(audio)
+    audio = audio.to(device)
+
+    generated_waves = []
+    spectrograms = []
+
+    if ref_text[-1] != " ":
+        ref_text = ref_text + " "
+
+    def process_batch(gen_text):
+        local_speed = speed
+        if len(gen_text.encode("utf-8")) < 10:
+            local_speed = 0.3
+
+        # Prepare the text
+        text_list = [ref_text + gen_text]
+        final_text = normalize_text(text_list, lang=lang)
+        logger.debug(f"final_text: {final_text}")
+        # final_text_list = convert_char_to_pinyin(text_list)
+
+        # inference
+        with torch.inference_mode():
+            generated, prompt_semantic_code, prompt_acoustic_code = valle_ar_inference(
+                ar_model_obj=ar_model_obj,
+                dualcodec_inference_obj=dualcodec_inference_obj,
+                tokenizer=tokenizer_obj,
+                text=final_text,
+                prompt_speech=audio,
+                prompt_language=lang,
+                top_k=top_k,
+                top_p=top_p,
+                temperature=temperature,
+                repeat_penalty=repeat_penalty,
+                return_prompt=True,
+                device=device,
+            )
+
+            # nar sampling
+            pass
+
+            generated = generated.to(torch.float32)  # generated mel spectrogram
+            generated = generated[:, ref_audio_len:, :]
+            generated = generated.permute(0, 2, 1)
+            if mel_spec_type == "vocos":
+                generated_wave = vocoder.decode(generated)
+            elif mel_spec_type == "bigvgan":
+                generated_wave = vocoder(generated)
+            if rms < target_rms:
+                generated_wave = generated_wave * rms / target_rms
+
+            # wav -> numpy
+            generated_wave = generated_wave.squeeze().cpu().numpy()
+
+            if streaming:
+                for j in range(0, len(generated_wave), chunk_size):
+                    yield generated_wave[j : j + chunk_size], target_sample_rate
+            else:
+                generated_cpu = generated[0].cpu().numpy()
+                del generated
+                yield generated_wave, generated_cpu
+
+    if streaming:
+        for gen_text in progress.tqdm(gen_text_batches) if progress is not None else gen_text_batches:
+            for chunk in process_batch(gen_text):
+                yield chunk
+    else:
+        with ThreadPoolExecutor() as executor:
+            futures = [executor.submit(process_batch, gen_text) for gen_text in gen_text_batches]
+            for future in progress.tqdm(futures) if progress is not None else futures:
+                result = future.result()
+                if result:
+                    generated_wave, generated_mel_spec = next(result)
+                    generated_waves.append(generated_wave)
+                    spectrograms.append(generated_mel_spec)
+
+        if generated_waves:
+            if cross_fade_duration <= 0:
+                # Simply concatenate
+                final_wave = np.concatenate(generated_waves)
+            else:
+                # Combine all generated waves with cross-fading
+                final_wave = generated_waves[0]
+                for i in range(1, len(generated_waves)):
+                    prev_wave = final_wave
+                    next_wave = generated_waves[i]
+
+                    # Calculate cross-fade samples, ensuring it does not exceed wave lengths
+                    cross_fade_samples = int(cross_fade_duration * target_sample_rate)
+                    cross_fade_samples = min(cross_fade_samples, len(prev_wave), len(next_wave))
+
+                    if cross_fade_samples <= 0:
+                        # No overlap possible, concatenate
+                        final_wave = np.concatenate([prev_wave, next_wave])
+                        continue
+
+                    # Overlapping parts
+                    prev_overlap = prev_wave[-cross_fade_samples:]
+                    next_overlap = next_wave[:cross_fade_samples]
+
+                    # Fade out and fade in
+                    fade_out = np.linspace(1, 0, cross_fade_samples)
+                    fade_in = np.linspace(0, 1, cross_fade_samples)
+
+                    # Cross-faded overlap
+                    cross_faded_overlap = prev_overlap * fade_out + next_overlap * fade_in
+
+                    # Combine
+                    new_wave = np.concatenate(
+                        [prev_wave[:-cross_fade_samples], cross_faded_overlap, next_wave[cross_fade_samples:]]
+                    )
+
+                    final_wave = new_wave
+
+            # Create a combined spectrogram
+            combined_spectrogram = np.concatenate(spectrograms, axis=1)
+
+            yield final_wave, target_sample_rate, combined_spectrogram
+
+        else:
+            yield None, target_sample_rate, None
+
+
+@torch.inference_mode()
+def valle_ar_inference(
+    ar_model_obj,
+    dualcodec_inference_obj,
+    tokenizer,
+    text,
+    prompt_speech,
+    prompt_language,
+    temperature=1.0,
+    top_k=1000,
+    top_p=0.85,
+    repeat_penalty=1.1,
+    return_prompt=False,
+    device='cuda',
+):
+    """
+        Generate text given speech and text prompts.
+        Args:
+            ar_model_obj: The autoregressive model object.
+            tokenizer: The whisper tokenizer object.
+            text: The text prompt.
+            prompt_speech: The speech prompt.
+            prompt_language: The language of the prompt.
+            temp: Temperature for sampling.
+            top_k: Top-k sampling parameter.
+            top_p: Top-p sampling parameter.
+            repeat_penalty: Penalty for repeated tokens.
+            return_prompt: Whether to return the semantic and acoustic prompt code.
+    """
+    prompt_text_tokens = torch.tensor(
+        [
+            [tokenizer.to_language_token(prompt_language)]
+            + tokenizer.encode(text)
+        ],
+        dtype=torch.int32,
+        device=device,
+    )
+    prompt_text_len = torch.tensor(
+        [prompt_text_tokens.shape[-1]], device=device
+    )
+
+    # prompt semantic codes
+    prompt_semantic_code, prompt_acoustic_code = dualcodec_inference_obj.encode(
+        prompt_speech,
+    )
+    # semantic_codes shape: torch.Size([1, 1, T])
+    # acoustic_codes shape: torch.Size([1, n_quantizers-1, T])
+
+    out = ar_model_obj.inference(
+        text=prompt_text_tokens,
+        text_len=prompt_text_len,
+        prompt_text=None,
+        prompt_text_len=None,
+        prompt_speech_token=prompt_semantic_code.squeeze(0),
+        prompt_speech_token_len=torch.tensor([prompt_semantic_code.shape[-1]]),
+        top_k=top_k,
+        top_p=top_p,
+        repeat_penalty=repeat_penalty,
+        temperature=temperature,
+    )
+    if return_prompt:
+        return out, prompt_semantic_code, prompt_acoustic_code
+    else:
+        return out #, ret_semantic_code

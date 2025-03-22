@@ -28,7 +28,7 @@ def gpu_decorator(func):
 
 
 # from dualcodec.model_tts.valle_ar import ValleARInference
-from dualcodec.infer.utils_infer import load_checkpoint, preprocess_ref_audio_text, remove_silence_for_generated_wav, save_spectrogram
+from dualcodec.utils.utils_infer import load_checkpoint, preprocess_ref_audio_text, remove_silence_for_generated_wav, save_spectrogram
 
 
 # load models
