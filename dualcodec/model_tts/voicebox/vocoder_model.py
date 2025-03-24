@@ -9,7 +9,7 @@ from torch.nn.utils import weight_norm, remove_weight_norm
 from torchaudio.functional.functional import _hz_to_mel, _mel_to_hz
 from dualcodec.utils.melspec import MelSpectrogram
 import librosa
-
+import cached_path
 
 def safe_log(x: torch.Tensor, clip_val: float = 1e-7) -> torch.Tensor:
     """
@@ -888,7 +888,7 @@ def vocos_50hz():
         padding="same"
     )
 
-def get_vocos_model_spectrogram(device='cpu'):
+def get_vocos_model_spectrogram(vocoder_path=cached_path('hf://amphion/dualcodec-tts/vocos_emilia.safetensors'), device='cpu'):
     vocos_model = Vocos(
         input_channels=128,
         dim=1024,
@@ -899,7 +899,7 @@ def get_vocos_model_spectrogram(device='cpu'):
         hop_size=480,
         padding="same"
     )
-    vocoder_path = '/gluster-ssd-tts/jiaqi_repos/vocos_emilia_singnet3k.safetensors'
+    # vocoder_path = '/gluster-ssd-tts/jiaqi_repos/vocos_emilia_singnet3k.safetensors'
     import safetensors.torch
     ckpt = safetensors.torch.load_file(vocoder_path)
     vocos_model.load_state_dict(ckpt)
