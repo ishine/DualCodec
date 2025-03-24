@@ -39,8 +39,38 @@ pip install dualcodec
 
 
 ## How to inference DualCodec
+### 1. Programmic usage: 
+This automatically downloads checkpoints from huggingface and automatically loads them.
+```python
+import dualcodec
 
-### 1. Download checkpoints to local: 
+model_id = "12hz_v1" # select from available Model_IDs, "12hz_v1" or "25hz_v1"
+
+dualcodec_model = dualcodec.get_model(model_id)
+dualcodec_inference = dualcodec.Inference(dualcodec_model=dualcodec_model, device="cuda")
+
+# do inference for your wav
+import torchaudio
+audio, sr = torchaudio.load("YOUR_WAV.wav")
+# resample to 24kHz
+audio = torchaudio.functional.resample(audio, sr, 24000)
+audio = audio.reshape(1,1,-1)
+audio = audio.to("cuda")
+# extract codes, for example, using 8 quantizers here:
+semantic_codes, acoustic_codes = dualcodec_inference.encode(audio, n_quantizers=8)
+# semantic_codes shape: torch.Size([1, 1, T])
+# acoustic_codes shape: torch.Size([1, n_quantizers-1, T])
+
+# produce output audio
+out_audio = dualcodec_inference.decode(semantic_codes, acoustic_codes)
+
+# save output audio
+torchaudio.save("out.wav", out_audio.cpu().squeeze(0), 24000)
+```
+
+
+### 2. Programmic usage with local checkpoints
+First, download checkpoints to local: 
 ```
 # export HF_ENDPOINT=https://hf-mirror.com      # uncomment this to use huggingface mirror if you're in China
 huggingface-cli download facebook/w2v-bert-2.0 --local-dir w2v-bert-2.0
@@ -48,7 +78,7 @@ huggingface-cli download amphion/dualcodec dualcodec_12hz_16384_4096.safetensors
 ```
 The second command downloads the two DualCodec model (12hz_v1 and 25hz_v1) checkpoints and a w2v-bert-2 mean and variance statistics to the local directory `dualcodec_ckpts`.
 
-### 2. Programmic usage: 
+Then you can use the following code to inference DualCodec with local checkpoints.
 ```python
 import dualcodec
 
@@ -65,6 +95,7 @@ audio, sr = torchaudio.load("YOUR_WAV.wav")
 # resample to 24kHz
 audio = torchaudio.functional.resample(audio, sr, 24000)
 audio = audio.reshape(1,1,-1)
+audio = audio.to("cuda")
 # extract codes, for example, using 8 quantizers here:
 semantic_codes, acoustic_codes = dualcodec_inference.encode(audio, n_quantizers=8)
 # semantic_codes shape: torch.Size([1, 1, T])
