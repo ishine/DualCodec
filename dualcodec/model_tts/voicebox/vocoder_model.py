@@ -9,7 +9,7 @@ from torch.nn.utils import weight_norm, remove_weight_norm
 from torchaudio.functional.functional import _hz_to_mel, _mel_to_hz
 from dualcodec.utils.melspec import MelSpectrogram
 import librosa
-import cached_path
+from cached_path import cached_path
 
 def safe_log(x: torch.Tensor, clip_val: float = 1e-7) -> torch.Tensor:
     """
@@ -915,6 +915,8 @@ def get_vocos_model_spectrogram(vocoder_path=cached_path('hf://amphion/dualcodec
     vocos_model.eval().to(device)
     mel_model.to(device)
     return vocos_model, mel_model
+
+@torch.inference_mode()
 def decode_vocos(vocos_model, mel_model, mel_feat):
     """
     mel_feat: [B, D, T]
@@ -922,6 +924,7 @@ def decode_vocos(vocos_model, mel_model, mel_feat):
     rec_speech = vocos_model(mel_feat).squeeze(1) # [B, T]
     return rec_speech # [b,t]
 
+@torch.inference_mode()
 def infer_vocos(vocos_model, mel_model, speech):
     """
     speech: [B, T]
@@ -941,11 +944,11 @@ def infer_vocos(vocos_model, mel_model, speech):
     
 
 if __name__ == "__main__":
-    vocos_model, mel_model = get_vocos_model_spectrogram('cpu')
+    vocos_model, mel_model = get_vocos_model_spectrogram(device='cpu')
 
-    speech = librosa.load("/Users/lijiaqi18/github/DualCodec/dualcodec/infer/examples/basic/example_wav_en.wav", sr=24000)[0]
+    speech = librosa.load("dualcodec/infer/examples/basic/example_wav_en.wav", sr=24000)[0]
     speech = torch.tensor(speech).unsqueeze(0)
     print(speech.shape) # [b,t]
     rec_speech = infer_vocos(vocos_model, mel_model, speech)
     import torchaudio
-    torchaudio.save("test.wav", rec_speech, sample_rate=24000)
+    torchaudio.save("test.wav", rec_speech.cpu(), sample_rate=24000)
