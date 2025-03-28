@@ -1,6 +1,6 @@
 [project]
 name = "dualcodec"
-version = "0.3.4"
+version = "0.3.5"
 description = "The DualCodec neural audio codec."
 dependencies = [
     "transformers>=4.30.0",
