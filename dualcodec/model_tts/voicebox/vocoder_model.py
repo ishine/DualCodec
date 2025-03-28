@@ -917,9 +917,11 @@ def get_vocos_model_spectrogram(vocoder_path=cached_path('hf://amphion/dualcodec
     return vocos_model, mel_model
 
 @torch.inference_mode()
-def decode_vocos(vocos_model, mel_model, mel_feat):
+def mel_to_wav_vocos(vocos_model, mel_feat):
     """
     mel_feat: [B, D, T]
+    Returns:
+    speech: [B, T]
     """
     rec_speech = vocos_model(mel_feat).squeeze(1) # [B, T]
     return rec_speech # [b,t]
@@ -938,9 +940,7 @@ def infer_vocos(vocos_model, mel_model, speech):
     mel_feat = (mel_feat - MEL_MIN) / math.sqrt(MEL_VAR)
 
     mel_feat = mel_feat.transpose(1,2)
-
-    print(mel_feat.shape)
-    return decode_vocos(vocos_model, mel_model, mel_feat) # [b,t]
+    return mel_to_wav_vocos(vocos_model, mel_model, mel_feat) # [b,t]
     
 
 if __name__ == "__main__":
