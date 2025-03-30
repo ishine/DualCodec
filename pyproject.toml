@@ -1,6 +1,6 @@
 [project]
 name = "dualcodec"
-version = "0.3.5"
+version = "0.3.6"
 description = "The DualCodec neural audio codec."
 dependencies = [
     "transformers>=4.30.0",
@@ -13,6 +13,7 @@ dependencies = [
     "einops",
     "safetensors",
     "cached_path",
+    "protobuf>=4.21",
 ]
 packages = "dualcodec"
 requires-python = ">=3.9"
