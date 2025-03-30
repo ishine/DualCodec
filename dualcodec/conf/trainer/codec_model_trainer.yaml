@@ -58,6 +58,6 @@ cfg:
       gamma: 0.999999
     max_sentences: 64
 trainer: 
-  _target_: dualcodec.codec_model.trainer.Trainer
+  _target_: dualcodec.model_codec.trainer.Trainer
   cfg: ${..cfg}
   args: ${..args}
