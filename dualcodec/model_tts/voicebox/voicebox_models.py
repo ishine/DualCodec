@@ -363,7 +363,7 @@ def extract_normalized_mel_spec_50hz(speech, device='cuda'):
     return mel_feat
 
 def mel_spec_50hz():
-    from .melspec import MelSpectrogram
+    from dualcodec.utils.melspec import MelSpectrogram
     mel_model = MelSpectrogram(
         sampling_rate=24000,
         n_fft=1920,
