@@ -12,8 +12,12 @@ from importlib.resources import files
 import torch
 from torch.nn.utils.rnn import pad_sequence
 
-import jieba
-from pypinyin import lazy_pinyin, Style
+try:
+    import jieba
+    from pypinyin import lazy_pinyin, Style
+except:
+    pass
+
 from loguru import logger
 
 # seed everything

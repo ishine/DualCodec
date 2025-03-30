@@ -19,13 +19,16 @@ import torch
 import torchaudio
 import tqdm
 from huggingface_hub import snapshot_download, hf_hub_download
-from pydub import AudioSegment, silence
-from transformers import pipeline
+try:
+    from pydub import AudioSegment, silence
+    from transformers import pipeline
 
-from f5_tts.model.utils import (
-    get_tokenizer,
-    convert_char_to_pinyin,
-)
+    from f5_tts.model.utils import (
+        get_tokenizer,
+        convert_char_to_pinyin,
+    )
+except:
+    pass # pass if not installed f5-tts
 
 _ref_audio_cache = {}
 
