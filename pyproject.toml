@@ -13,7 +13,6 @@ dependencies = [
     "einops",
     "safetensors",
     "cached_path",
-    "protobuf>=4.21",
 ]
 packages = "dualcodec"
 requires-python = ">=3.9"

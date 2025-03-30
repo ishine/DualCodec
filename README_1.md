@@ -40,8 +40,7 @@ pip install dualcodec
 
 
 ## How to inference DualCodec
-### 1. Programmic usage: 
-This automatically downloads checkpoints from huggingface and automatically loads them.
+### 1. Programmic usage (automatically downloads checkpoints from Huggingface): 
 ```python
 import dualcodec
 
@@ -70,7 +69,7 @@ torchaudio.save("out.wav", out_audio.cpu().squeeze(0), 24000)
 ```
 
 
-### 2. Programmic usage with local checkpoints
+### 2. Alternative usage with local checkpoints
 First, download checkpoints to local: 
 ```
 # export HF_ENDPOINT=https://hf-mirror.com      # uncomment this to use huggingface mirror if you're in China
