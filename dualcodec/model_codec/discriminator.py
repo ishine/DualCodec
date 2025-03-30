@@ -4,7 +4,10 @@ import torch.nn.functional as F
 from audiotools import AudioSignal
 from audiotools import STFTParams
 from einops import rearrange
-from torch.nn.utils.parameterizations import weight_norm
+try:
+    from torch.nn.utils import weight_norm
+except:
+    from torch.nn.utils.parameterizations import weight_norm
 
 def WNConv1d(*args, **kwargs):
     act = kwargs.pop("act", True)

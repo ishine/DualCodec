@@ -1,2 +1,2 @@
-from .dual_model import DualCodec, DAC
+from .dualcodec_model import DualCodec, DAC
 from .discriminator import Discriminator
