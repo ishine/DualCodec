@@ -25,6 +25,7 @@ pip install dualcodec
 ```
 
 ## News
+- 2025-03-30: Added automatic downloading from huggingface. Uploaded some TTS models.
 - 2025-01-22: I added training and finetuning instructions for DualCodec, as well as a gradio interface. Version is v0.3.0.
 - 2025-01-16: Finished releasing DualCodec inference codes, the version is v0.1.0. Latest versions are synced to pypi.
 
