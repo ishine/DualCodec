@@ -1,6 +1,8 @@
 import torch
 from cached_path import cached_path
 from functools import partial
+from dualcodec.utils import device
+import torch.nn.functional as F
 
 def load_voicebox_300M_model():
     TTS_MODEL_CFG = {
@@ -18,15 +20,15 @@ def load_voicebox_300M_model():
     model = safetensors.torch.load_model(model, ckpt_path)
     return model
 
-def load_dualcodec_12hzv1_model():
+def load_dualcodec_12hzv1_model(device='cuda'):
     import dualcodec
     dualcodec_model = dualcodec.get_model("12hz_v1")
     dualcodec_inference_obj = dualcodec.Inference(dualcodec_model=dualcodec_model, device=device, autocast=True)
     return dualcodec_inference_obj
 
-def get_vocoder_decode_func_and_mel_spec():
+def get_vocoder_decode_func_and_mel_spec(device='cuda'):
     from dualcodec.model_tts.voicebox.vocoder_model import get_vocos_model_spectrogram, mel_to_wav_vocos
-    vocos_model, mel_model = get_vocos_model_spectrogram()
+    vocos_model, mel_model = get_vocos_model_spectrogram(device=device)
     infer_vocos = partial(mel_to_wav_vocos, vocos_model)
     return infer_vocos, mel_model
 
@@ -36,7 +38,7 @@ def voicebox_inference(
     vocoder_decode_func,
     mel_spec_extractor_func,
     combine_semantic_code, # shape [b t]
-    prompt_acoustic_code, # shape [1, q, t]
+    prompt_speech, # shape [b t]
     device='cuda',
 ):
     def code2mel(self, combine_semantic_code: torch.Tensor, prompt_speech):
@@ -48,9 +50,10 @@ def voicebox_inference(
 
         if prompt_speech is not None:
             prompt_mel_feat = mel_spec_extractor_func(
-                torch.tensor(prompt_speech).unsqueeze(0), 
+                torch.tensor(prompt_speech), # [b t]
                 device=device,
-            )
+            ) # [b c t]
+            prompt_mel_feat = prompt_mel_feat.transpose(1, 2) # [b t c]
         else:
             prompt_mel_feat = None
 
@@ -62,23 +65,49 @@ def voicebox_inference(
             rescale_cfg=0.75,
         )
 
-        return predict_mel
+        return predict_mel # [b t c]
 
     predicted_mel = code2mel(
         voicebox_model_obj,
         combine_semantic_code,
-        prompt_acoustic_code,
-    ) # [b, 1, t]
+        prompt_speech,
+    ) # [b, t, c]
 
-    predicted_audio = vocoder_decode_func(predicted_mel)
-    return predicted_audio
+    predicted_audio = vocoder_decode_func(predicted_mel.transpose(1,2))
+    return predicted_audio # [b,t]
 
 if __name__ == '__main__':
-    from dualcodec.model_tts.voicebox.voicebox_models import voicebox_300M
-    voicebox_model_obj = voicebox_300M()
-    vocoder_decode_func = get_vocoder_decode_func_and_mel_spec()
+    from dualcodec.model_tts.voicebox.voicebox_models import voicebox_300M, extract_normalized_mel_spec_50hz
+    voicebox_model_obj = voicebox_300M().to(device)
+    # TODO load checkpoint
+
+    vocoder_decode_func, mel_model = get_vocoder_decode_func_and_mel_spec(device=device)
+
+    # extract GT dualcodec tokens
+    dualcodec_inference_obj = load_dualcodec_12hzv1_model(device=device)
+    import torchaudio
+    audio, sr = torchaudio.load("/home/yuantuo666/DualCodec/dualcodec/infer/examples/basic/example_wav_en.wav")
+    # resample to 24kHz
+    audio = torchaudio.functional.resample(audio, sr, 24000)
+    audio = audio.reshape(1,1,-1)
+    audio = audio.to("cuda")
+    # extract codes, for example, using 8 quantizers here:
+    semantic_codes, acoustic_codes = dualcodec_inference_obj.encode(audio, n_quantizers=8)
+    # semantic_codes shape: torch.Size([1, 1, T])
+    # acoustic_codes shape: torch.Size([1, n_quantizers-1, T])
+
+    # change semantic_codes to [b, t]
+    semantic_codes = semantic_codes.squeeze(1)
+
+    # use first 3s of acoustic codes as prompt
+    audio = audio[:, :, :int(24000*2)]
+
     predicted = voicebox_inference(
         voicebox_model_obj=voicebox_model_obj,
         vocoder_decode_func=vocoder_decode_func,
-        mel_spec_extractor_func=
+        mel_spec_extractor_func=extract_normalized_mel_spec_50hz,
+        combine_semantic_code=semantic_codes,
+        prompt_speech=audio.squeeze(1), # [b t]
     )
+
+    torchaudio.save("predicted.wav", predicted.cpu(), 24000)

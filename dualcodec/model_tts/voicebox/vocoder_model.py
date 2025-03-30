@@ -888,7 +888,7 @@ def vocos_50hz():
         padding="same"
     )
 
-def get_vocos_model_spectrogram(vocoder_path=cached_path('hf://amphion/dualcodec-tts/vocos_emilia.safetensors'), device='cpu'):
+def get_vocos_model_spectrogram(vocoder_path=cached_path('hf://amphion/dualcodec-tts/vocos_emilia.safetensors'), device='cuda'):
     vocos_model = Vocos(
         input_channels=128,
         dim=1024,
@@ -903,23 +903,15 @@ def get_vocos_model_spectrogram(vocoder_path=cached_path('hf://amphion/dualcodec
     import safetensors.torch
     ckpt = safetensors.torch.load_file(vocoder_path)
     vocos_model.load_state_dict(ckpt)
-    mel_model = MelSpectrogram(
-        1920,
-        128,
-        24000,
-        480,
-        1920,
-        0,
-        12000
-    )
+    from .voicebox_models import extract_normalized_mel_spec_50hz
     vocos_model.eval().to(device)
     mel_model.to(device)
-    return vocos_model, mel_model
+    return vocos_model, extract_normalized_mel_spec_50hz
 
 @torch.inference_mode()
 def mel_to_wav_vocos(vocos_model, mel_feat):
     """
-    mel_feat: [B, D, T]
+    mel_feat: [B, D, T], normalized 50hz mel
     Returns:
     speech: [B, T]
     """

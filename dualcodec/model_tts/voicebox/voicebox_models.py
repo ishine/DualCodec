@@ -269,7 +269,7 @@ class VoiceBox(nn.Module):
         xt = z
         # t from 0 to 1: x0 = z ~ N(0, 1)
         for i in range(n_timesteps):
-            xt_input = torch.cat([prompt, xt], dim=1)
+            xt_input = torch.cat([prompt, xt], dim=1) # [b t c]
             t = (0 + (i + 0.5) * h) * torch.ones(
                 z.shape[0], dtype=z.dtype, device=z.device
             )
@@ -331,7 +331,7 @@ def voicebox_300M():
         sigma=1e-5,
         time_scheduler="cos",
     )
-    return model, mel_spec_50hz()
+    return model
 
 
 
@@ -355,7 +355,7 @@ def extract_normalized_mel_spec_50hz(speech, device='cuda'):
     ).to(device)
     mel_model.eval()
     mel_feat = mel_model(speech.to(device))
-    mel_feature = mel_feature.transpose(1, 2)
+    mel_feat = mel_feat.transpose(1, 2)
     MEL_MIN = -4.92
     MEL_VAR = 8.14
     mel_feat = (mel_feat - MEL_MIN) / math.sqrt(MEL_VAR)
