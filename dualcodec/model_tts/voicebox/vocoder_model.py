@@ -905,7 +905,6 @@ def get_vocos_model_spectrogram(vocoder_path=cached_path('hf://amphion/dualcodec
     vocos_model.load_state_dict(ckpt)
     from .voicebox_models import extract_normalized_mel_spec_50hz
     vocos_model.eval().to(device)
-    mel_model.to(device)
     return vocos_model, extract_normalized_mel_spec_50hz
 
 @torch.inference_mode()

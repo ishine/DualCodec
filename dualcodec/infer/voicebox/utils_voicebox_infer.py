@@ -1,23 +1,24 @@
 import torch
 from cached_path import cached_path
 from functools import partial
-from dualcodec.utils import device
+from dualcodec.utils import device, package_dir
 import torch.nn.functional as F
 
-def load_voicebox_300M_model():
+def load_voicebox_300M_model(device='cuda'):
     TTS_MODEL_CFG = {
         "model": "voicebox_300M",
         # "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_ar_12hzv1.safetensors",
-        "ckpt_path": "/gluster-ssd-tts/tts_share_training_logs/lijiaqi18/job-0bbab25ef77fae6c/voicebox_train/checkpoint/epoch-0002_step-0250000_loss-0.335350-voicebox_train/model.safetensors",
+        "ckpt_path": "/gluster-ssd-tts/tts_share_training_logs/lijiaqi18/job-0bbab25ef77fae6c/voicebox_train/checkpoint/epoch-0003_step-0425000_loss-0.281418-voicebox_train/model.safetensors",
         # "cfg_path": "../../conf/model/valle_ar/llama_250M.yaml"
     }
     from dualcodec.model_tts.voicebox.voicebox_models import voicebox_300M
-    model = voicebox_300M()
+    model = voicebox_300M().to(device)
+    model.eval()
     # load model
     ckpt_path = TTS_MODEL_CFG["ckpt_path"]
     ckpt_path = cached_path(ckpt_path)
     import safetensors.torch
-    model = safetensors.torch.load_model(model, ckpt_path)
+    safetensors.torch.load_model(model, ckpt_path)
     return model
 
 def load_dualcodec_12hzv1_model(device='cuda'):
@@ -78,15 +79,16 @@ def voicebox_inference(
 
 if __name__ == '__main__':
     from dualcodec.model_tts.voicebox.voicebox_models import voicebox_300M, extract_normalized_mel_spec_50hz
-    voicebox_model_obj = voicebox_300M().to(device)
+    # voicebox_model_obj = voicebox_300M().to(device)
     # TODO load checkpoint
+    voicebox_model_obj = load_voicebox_300M_model(device=device)
 
     vocoder_decode_func, mel_model = get_vocoder_decode_func_and_mel_spec(device=device)
 
     # extract GT dualcodec tokens
     dualcodec_inference_obj = load_dualcodec_12hzv1_model(device=device)
     import torchaudio
-    audio, sr = torchaudio.load("/home/yuantuo666/DualCodec/dualcodec/infer/examples/basic/example_wav_en.wav")
+    audio, sr = torchaudio.load(f"{package_dir}/infer/examples/basic/example_wav_en.wav")
     # resample to 24kHz
     audio = torchaudio.functional.resample(audio, sr, 24000)
     audio = audio.reshape(1,1,-1)
