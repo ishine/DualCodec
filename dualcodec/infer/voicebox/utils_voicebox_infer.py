@@ -7,9 +7,7 @@ import torch.nn.functional as F
 def load_voicebox_300M_model(device='cuda'):
     TTS_MODEL_CFG = {
         "model": "voicebox_300M",
-        # "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_ar_12hzv1.safetensors",
-        "ckpt_path": "/gluster-ssd-tts/tts_share_training_logs/lijiaqi18/job-0bbab25ef77fae6c/voicebox_train/checkpoint/epoch-0003_step-0425000_loss-0.281418-voicebox_train/model.safetensors",
-        # "cfg_path": "../../conf/model/valle_ar/llama_250M.yaml"
+        "ckpt_path": "hf://amphion/dualcodec-tts/voicebox_dualcodec12hzv1.safetensors",
     }
     from dualcodec.model_tts.voicebox.voicebox_models import voicebox_300M
     model = voicebox_300M().to(device)
