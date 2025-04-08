@@ -156,7 +156,7 @@ def infer_batch_process(
                     dualcodec_inference_obj=dualcodec_inference_obj,
                     combine_semantic_code=combine_semantic_code,
                     prompt_acoustic_code=prompt_acoustic_code,
-                    prompt_text_tokens=prompt_text_tokens,
+                    prompt_text_tokens=None,
                     use_text_prompt=True,
                     prompt_language=lang,
                     device=device,
@@ -165,10 +165,10 @@ def infer_batch_process(
                 generated = generated.to(torch.float32)  # generated mel spectrogram
                 
                 # wav -> numpy
-                generated_wave = generated_wave.squeeze().cpu().numpy()
+                generated_wave = generated.squeeze().squeeze().cpu()
 
                 # get spectrogram
-                generated = torchaudio.transforms.MelSpectrogram(
+                generated_cpu = torchaudio.transforms.MelSpectrogram(
                     sample_rate=target_sample_rate,
                     n_fft=n_fft,
                     win_length=win_length,
@@ -179,14 +179,15 @@ def infer_batch_process(
                     pad=0,
                     power=1,
                     norm="slaney",
-                    mel_scale=mel_spec_type,
-                )(generated) # [B,H,T]
+                )(generated_wave) # [H,T]
+
+                generated_wave = generated_wave.numpy()
 
                 if streaming:
                     for j in range(0, len(generated_wave), chunk_size):
                         yield generated_wave[j : j + chunk_size], target_sample_rate
                 else:
-                    generated_cpu = generated[0].cpu().numpy()
+                    generated_cpu = generated.cpu().numpy()
                     del generated
                     yield generated_wave, generated_cpu
 
@@ -315,7 +316,7 @@ def valle_ar_inference(
         # out: [B, T], prompt_semantic_code: [1, 1, T], prompt_acoustic_code: [1, n_quantizers-1, T]
         return out, prompt_semantic_code, prompt_acoustic_code, prompt_text_tokens
     else:
-        return out #, ret_semantic_code
+        return out
 
 @torch.inference_mode()
 def valle_nar_inference(
@@ -327,33 +328,37 @@ def valle_nar_inference(
     use_text_prompt=True,
     prompt_language='en',
     device='cuda',
+    use_prompt_text=False,
 ):
     if prompt_text_tokens is not None:
-        prompt_text_mask = torch.ones(1, prompt_text_tokens.shape[-1], device=device, dtype=torch.bool)
+        raise NotImplementedError('prompt_text_tokens is not None')
+        # prompt_text_mask = torch.ones(1, prompt_text_tokens.shape[-1], device=device, dtype=torch.bool)
     else:
         B = 1
         prompt_text_tokens = torch.zeros(B, 1, dtype=torch.long).to(device)
         prompt_text_mask = torch.zeros(B, 1, dtype=torch.bool).to(device)
     prompt_acoustic_code = rearrange(prompt_acoustic_code, 'b q t -> q b t')
     prompt_semantic_code = combine_semantic_code[:, :prompt_acoustic_code.shape[-1]]
+    predict_semantic_code = combine_semantic_code[:, prompt_acoustic_code.shape[-1]:]
     prompt_semantic_code = rearrange(prompt_semantic_code, 'b t -> 1 b t')
-    prompt_acoustic_code = torch.cat([prompt_semantic_code, prompt_acoustic_code], dim=0)
+    prompt_acoustic_code = torch.cat([prompt_semantic_code, prompt_acoustic_code], dim=0) # [8,B,T]
 
     out = nar_model_obj.sample_hf(
         phone_ids=prompt_text_tokens, #[B, T]
         phone_mask=prompt_text_mask,
         prompt_ids=prompt_acoustic_code, # [8,B,T]
-        first_stage_ids=combine_semantic_code,
+        first_stage_ids=predict_semantic_code, # [B,T]
         use_text_prompt=use_text_prompt,
         # target_quantization_layer=1+i%6,
     )
 
-    predict_full = out[1:]
+    predict_full = rearrange(out, 'q b t -> b q t') # [8,B,T]
 
-    combine_semantic_code = rearrange(combine_semantic_code, 'b t -> b 1 t')
-    predict_full = rearrange(predict_full, 'q b t -> b q t')
+    # combine_semantic_code = rearrange(combine_semantic_code, 'b t -> b 1 t')
+    # predict_full = rearrange(predict_full, 'q b t -> b q t')
 
     combine_audio = dualcodec_inference_obj.decode(
-        combine_semantic_code, predict_full
+        predict_full[:,:1],
+        predict_full[:,1:],
     )
     return combine_audio # [1, 1, T]

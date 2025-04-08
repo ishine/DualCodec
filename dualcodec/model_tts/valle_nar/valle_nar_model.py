@@ -13,10 +13,9 @@ from typing import List, Optional, Tuple, Union
 
 from .modeling_llama import LlamaDecoderLayer
 
-# Config below abandoned, passed by ValleNAR.init()
-# NUM_QUANTIZERS = 8 # number of quantizers in total, currently assumes first layer AR.
-# START_QUANTIZATION_LAYER = 1  # start quantization layer
-# END_QUANTIZATION_LAYER = 7  # end quantization layer
+NUM_QUANTIZERS = 8 # number of quantizers in total, currently assumes first layer AR.
+START_QUANTIZATION_LAYER = 1  # start quantization layer
+END_QUANTIZATION_LAYER = 7  # end quantization layer
 
 
 class LlamaAdaptiveRMSNorm(nn.Module):
@@ -122,7 +121,7 @@ class MultiEmbedding(nn.Module):
         first_layer_num_embeddings=16384,  # 添加新参数
         num_embeddings=1034,
         embedding_dim=1024,
-        num_quantization_layers=8,
+        num_quantization_layers=NUM_QUANTIZERS,
     ):
         super().__init__()
         # 第一层使用不同的vocab size
@@ -156,8 +155,7 @@ class MultiEmbedding(nn.Module):
                 summed_embeddings += self.embeddings[i](input_ids[i])
             return summed_embeddings
         except:
-            pass
-            # breakpoint()
+            breakpoint()
 
 
 class LlammaNARModel(LlamaModel):
@@ -172,7 +170,7 @@ class LlammaNARModel(LlamaModel):
         )
 
         self.embed_cond = nn.Embedding(
-            config.num_quantizer_layers, config.hidden_size
+            NUM_QUANTIZERS, config.hidden_size
         )  # 7 quantization layers
 
         for layer in self.layers:
@@ -383,11 +381,11 @@ class LlamaForNARModeling(LlamaPreTrainedModel):
 
         self.lm_head = nn.ModuleList(
             [
-                nn.Linear(config.hidden_size, config.target_vocab_size, bias=False)
-                for i in range(config.end_quantization_layer - config.start_quantization_layer + 1)
+                nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+                for i in range(END_QUANTIZATION_LAYER - START_QUANTIZATION_LAYER + 1)
             ]
         )
-        self.start_quantization_layer = config.start_quantization_layer
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -436,7 +434,7 @@ class LlamaForNARModeling(LlamaPreTrainedModel):
         )
 
         hidden_states = outputs[0]
-        logits = self.lm_head[cond - self.start_quantization_layer](hidden_states)
+        logits = self.lm_head[cond - START_QUANTIZATION_LAYER](hidden_states)
 
         loss = None
         loss_fct = CrossEntropyLoss()
@@ -472,9 +470,6 @@ class ValleNAR(nn.Module):
         eos_phone_id=68257,
         use_input_embeds=False,
         emb_dim=256,
-        num_quantizer_layers = 8, # number of quantizers in total, currently assumes first layer AR.
-        start_quantization_layer = 1,  # start quantization layer
-        end_quantization_layer = 7  # end quantization layer
     ):
         super(ValleNAR, self).__init__()
         self.config = LlamaConfig(
@@ -488,11 +483,7 @@ class ValleNAR(nn.Module):
             eos_token_id=eos_target_id,
             use_cache=False,
             target_vocab_size=target_vocab_size,
-            num_quantizer_layers=num_quantizer_layers,
-            start_quantization_layer=start_quantization_layer,
-            end_quantization_layer=end_quantization_layer
         )
-
         self.phone_vocab_size = phone_vocab_size
         self.first_layer_vocab_size = first_layer_vocab_size
         self.target_vocab_size = target_vocab_size
@@ -503,9 +494,6 @@ class ValleNAR(nn.Module):
         self.eos_prompt_id = eos_prompt_id
         self.bos_phone_id = bos_phone_id
         self.eos_phone_id = eos_phone_id
-        self.num_quantizer_layers = num_quantizer_layers
-        self.start_quantization_layer = start_quantization_layer 
-        self.end_quantization_layer = end_quantization_layer
         self.model = LlamaForNARModeling(self.config)
 
         self.use_input_embeds = use_input_embeds
@@ -516,7 +504,7 @@ class ValleNAR(nn.Module):
             first_layer_num_embeddings=self.first_layer_vocab_size,
             num_embeddings=self.target_vocab_size,
             embedding_dim=hidden_size,
-            num_quantization_layers=self.num_quantizer_layers,
+            num_quantization_layers=NUM_QUANTIZERS,
         )
         self.phone_embedder.weight.data.normal_(mean=0.0, std=0.02)
 
@@ -542,31 +530,31 @@ class ValleNAR(nn.Module):
     ):
         """
         phone_ids: [B, T]
-        phone_mask: [B, T]. 1 for phone, 0 for padding
+        phone_mask: [B, T]
         target_ids: [8,B,T]
         target_mask: [B, T]
         dropout: rate of dropping out the target tokens
         """
         # assert (target_ids < 4096).all(), "target_ids should be less than 4096"
-        # phone_ids = phone_ids + self.target_vocab_size
-        phone_ids = phone_ids * phone_mask + ~phone_mask.to(torch.bool) * self.pad_token_id
+        phone_ids = phone_ids + self.target_vocab_size
+        phone_ids = phone_ids * phone_mask + (1 - phone_mask) * self.pad_token_id
         # assert (phone_ids >= 1024).all(), "phone_ids should be greater than 1024"
-        # breakpoint()
-        phone_ids, phone_mask, phone_label = self.add_phone_eos_bos_label(
-            phone_ids,
-            phone_mask,
-            self.eos_phone_id,
-            self.bos_phone_id,
-            self.pad_token_id,
-        )
-        phone_label = -100 * (~phone_mask)
+        # if self.phone_vocab_size != 1:
+        #     phone_ids, phone_mask, phone_label = self.add_phone_eos_bos_label(
+        #         phone_ids,
+        #         phone_mask,
+        #         self.eos_phone_id,
+        #         self.bos_phone_id,
+        #         self.pad_token_id,
+        #     )
+        phone_label = -100 * (1 - phone_mask)
         # get phone embedding
         phone_embedding = self.phone_embedder(
             phone_ids - self.target_vocab_size
         )  # [B, T, H]
 
         if prompt_len is not None:
-            assert not self.training 
+            assert not self.training  # vscode-remote://icoding%2B615692.icoding.baidu-int.com/ssd2/lijiaqi18/AmphionVALLEv2-main/models/tts/valle_v2/valle_inference.pynce stage fix prompt len to input
             NUM_PROMPT_TOKENS = prompt_len
         else:
             assert self.training
@@ -589,44 +577,45 @@ class ValleNAR(nn.Module):
             if self.mask_layer_schedule == "linear":
                 weights = torch.tensor(
                     [
-                        self.num_quantizer_layers - i
+                        NUM_QUANTIZERS - i
                         for i in range(
-                            self.start_quantization_layer, self.end_quantization_layer + 1
+                            START_QUANTIZATION_LAYER, END_QUANTIZATION_LAYER + 1
                         )
                     ]
                 )
                 weights = weights / weights.sum()
                 mask_layer = (
                     torch.multinomial(weights, 1, replacement=True)
-                    + self.start_quantization_layer
+                    + START_QUANTIZATION_LAYER
                 )
                 assert (
-                    mask_layer >= self.start_quantization_layer
-                    and mask_layer <= self.end_quantization_layer
+                    mask_layer >= START_QUANTIZATION_LAYER
+                    and mask_layer <= END_QUANTIZATION_LAYER
                 )
                 target_quantization_layer = mask_layer.item()
             elif self.mask_layer_schedule == "cosine":
                 weights = torch.tensor(
                     [
-                        np.cos(i / self.num_quantizer_layers * np.pi / 2)
+                        np.cos(i / NUM_QUANTIZERS * np.pi / 2)
                         for i in range(
-                            self.start_quantization_layer, self.end_quantization_layer + 1
+                            START_QUANTIZATION_LAYER, END_QUANTIZATION_LAYER + 1
                         )
                     ]
                 )
                 weights = weights / weights.sum()
                 mask_layer = (
                     torch.multinomial(weights, 1, replacement=True)
-                    + self.start_quantization_layer
+                    + START_QUANTIZATION_LAYER
                 )
                 assert (
-                    mask_layer >= self.start_quantization_layer
-                    and mask_layer <= self.end_quantization_layer
+                    mask_layer >= START_QUANTIZATION_LAYER
+                    and mask_layer <= END_QUANTIZATION_LAYER
                 )
                 target_quantization_layer = mask_layer.item()
+                breakpoint()
             elif self.mask_layer_schedule == "uniform":
                 target_quantization_layer = np.random.randint(
-                    self.start_quantization_layer, self.end_quantization_layer + 1
+                    START_QUANTIZATION_LAYER, END_QUANTIZATION_LAYER + 1
                 )
 
             # print(f'target layer: {target_quantization_layer}')
@@ -697,6 +686,7 @@ class ValleNAR(nn.Module):
             top1_acc = (top1_acc * target_mask).sum() / target_mask.sum()
         except Exception as e:
             print(e)
+            breakpoint()
 
         top5_acc = (logits.topk(5, dim=-1).indices == targets.unsqueeze(-1)).any(-1)
         top5_acc = (top5_acc * target_mask).sum() / target_mask.sum()
@@ -716,15 +706,16 @@ class ValleNAR(nn.Module):
     ):
         # phone_ids: [B, T]
         # phone_mask: [B, T]
+
         phone_ids = phone_ids + self.target_vocab_size * phone_mask
 
         phone_ids = phone_ids * phone_mask
         phone_ids = F.pad(phone_ids, (0, 1), value=0) + phone_eos_id * F.pad(
-            ~phone_mask, (0, 1), value=1
+            1 - phone_mask, (0, 1), value=1
         )  # make pad token eos token, add eos token at the end
         phone_mask = F.pad(phone_mask, (1, 0), value=1)  # add eos mask
         phone_ids = phone_ids * phone_mask + pad_token_id * (
-            ~phone_mask
+            1 - phone_mask
         )  # restore pad token ids
         phone_ids = F.pad(phone_ids, (1, 0), value=phone_bos_id)  # add bos token
         phone_mask = F.pad(phone_mask, (1, 0), value=1)  # add bos mask
@@ -737,7 +728,7 @@ class ValleNAR(nn.Module):
     def sample_hf(
         self,
         phone_ids,  # [B, T]
-        phone_mask, 
+        phone_mask,
         prompt_ids,  # [8, B, T]
         first_stage_ids: torch.Tensor,  # [B, T]
         top_k=50,
@@ -750,19 +741,14 @@ class ValleNAR(nn.Module):
         """
         phone_ids: [B, T]
         prompt_ids: [8, B, T]
-        first_stage_ids: [B, T] result from first quant layer. Should be continuation of prompt_ids
+        first_stage_ids: [B, T] result from first quant layer. Should be continuation of prompt_ids. should not contain prompt part
         """
-        if use_text_prompt == True:
-            pass
-        else:
-            phone_mask = torch.ones_like(phone_ids, dtype=torch.long)
-        
+        phone_mask = torch.ones_like(phone_ids, dtype=torch.long)
         assert prompt_ids.shape[-1] >= 5, "prompt_ids should have at least 5 tokens"
         B, T = first_stage_ids.shape  # 获取形状
-            
         padding_value = 1  # 在范围 [0, 4096] 内选择一个值作为填充值
         # 构造最后 7 层的填充值张量
-        padding_tensor = torch.full((self.num_quantizer_layers - 1, B, T), fill_value=padding_value, dtype=first_stage_ids.dtype, device=first_stage_ids.device)
+        padding_tensor = torch.full((7, B, T), fill_value=padding_value, dtype=first_stage_ids.dtype, device=first_stage_ids.device)
         # 将 first_stage_ids 扩展为目标张量，并拼接
         padded_tensor = torch.cat([first_stage_ids.unsqueeze(0), padding_tensor], dim=0)  # [7+1, B, T]
 
