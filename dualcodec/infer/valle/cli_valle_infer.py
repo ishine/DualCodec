@@ -34,7 +34,8 @@ from dualcodec.utils.utils_infer import (
     device,
     package_dir,
 )
-from dualcodec.infer.valle.utils_valle_infer import infer_process
+from dualcodec.infer.valle.utils_valle_infer import infer_process, load_dualcodec_valle_nar_12hzv1, \
+    load_dualcodec_valle_ar_12hzv1
 
 parser = argparse.ArgumentParser(
     prog="python3 infer-cli.py",
@@ -45,30 +46,6 @@ parser = argparse.ArgumentParser(
 
 # Note. Not to provide default value here in order to read default from config file
 
-parser.add_argument(
-    "-m",
-    "--model",
-    type=str,
-    help="The model name: F5TTS_v1_Base | F5TTS_Base | E2TTS_Base | etc.",
-)
-parser.add_argument(
-    "-mc",
-    "--model_cfg",
-    type=str,
-    help="The path to F5-TTS model config file .yaml",
-)
-parser.add_argument(
-    "-p",
-    "--ckpt_file",
-    type=str,
-    help="The path to model checkpoint .pt, leave blank to use default",
-)
-parser.add_argument(
-    "-v",
-    "--vocab_file",
-    type=str,
-    help="The path to vocab file .txt, leave blank to use default",
-)
 parser.add_argument(
     "-r",
     "--ref_audio",
@@ -115,53 +92,6 @@ parser.add_argument(
     action="store_true",
     help="To remove long silence found in ouput",
 )
-parser.add_argument(
-    "--load_vocoder_from_local",
-    action="store_true",
-    help="To load vocoder from local dir, default to ../checkpoints/vocos-mel-24khz",
-)
-parser.add_argument(
-    "--vocoder_name",
-    type=str,
-    choices=["vocos", "bigvgan"],
-    help=f"Used vocoder name: vocos | bigvgan, default {mel_spec_type}",
-)
-parser.add_argument(
-    "--target_rms",
-    type=float,
-    help=f"Target output speech loudness normalization value, default {target_rms}",
-)
-parser.add_argument(
-    "--cross_fade_duration",
-    type=float,
-    help=f"Duration of cross-fade between audio segments in seconds, default {cross_fade_duration}",
-)
-parser.add_argument(
-    "--nfe_step",
-    type=int,
-    help=f"The number of function evaluation (denoising steps), default {nfe_step}",
-)
-parser.add_argument(
-    "--cfg_strength",
-    type=float,
-    help=f"Classifier-free guidance strength, default {cfg_strength}",
-)
-parser.add_argument(
-    "--sway_sampling_coef",
-    type=float,
-    help=f"Sway Sampling coefficient, default {sway_sampling_coef}",
-)
-parser.add_argument(
-    "--speed",
-    type=float,
-    default=1.0,
-    help=f"The speed of the generated audio, default {speed}",
-)
-parser.add_argument(
-    "--fix_duration",
-    type=float,
-    help=f"Fix the total duration (ref and gen audios) in seconds, default {fix_duration}",
-)
 args = parser.parse_args()
 
 
@@ -170,36 +100,6 @@ args = parser.parse_args()
 # config = tomli.load(open(args.config, "rb"))
 config = {}
 
-
-
-# command-line interface parameters
-# load models
-def load_dualcodec_valle_ar_12hzv1():
-    TTS_MODEL_CFG = {
-        "model": "valle_ar",
-        "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_ar_12hzv1.safetensors",
-        # "ckpt_path": "dualcodec_tts_ckpts/dualcodec_valle_ar_12hzv1.safetensors",
-        "cfg_path": "../conf_tts/model/valle_ar/llama_250M.yaml"
-    }
-    model = instantiate_model(
-        model_cfg_path=TTS_MODEL_CFG["cfg_path"],
-    ).half().eval()
-    ckpt_path = TTS_MODEL_CFG["ckpt_path"]
-    load_checkpoint(model, ckpt_path, use_ema=False, device=device,)
-    return model
-def load_dualcodec_valle_nar_12hzv1():
-    TTS_MODEL_CFG = {
-        "model": "valle_nar",
-        "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_nar_dualcodec12hzv1.safetensors",
-        # "ckpt_path": "dualcodec_tts_ckpts/dualcodec_valle_ar_dualcodec12hzv1.safetensors",
-        "cfg_path": "../conf_tts/model/valle_nar/valle_nar.yaml"
-    }
-    model = instantiate_model(
-        model_cfg_path=TTS_MODEL_CFG["cfg_path"],
-    ).half().eval()
-    ckpt_path = TTS_MODEL_CFG["ckpt_path"]
-    load_checkpoint(model, ckpt_path, use_ema=False, device=device,)
-    return model
 
 logger.info("Loading Valle models...")
 ar_model = load_dualcodec_valle_ar_12hzv1()
@@ -216,7 +116,7 @@ ref_audio = args.ref_audio or config.get("ref_audio", f"{package_dir}/infer/exam
 ref_text = (
     args.ref_text
     if args.ref_text is not None
-    else config.get("ref_text", "They make a selective perception process.")
+    else config.get("ref_text", "Some call me nature. Others call me mother nature.")
 )
 gen_text = args.gen_text or config.get("gen_text", "Here we generate something just for test.")
 gen_file = args.gen_file or config.get("gen_file", "")
@@ -228,29 +128,8 @@ output_file = args.output_file or config.get(
 
 save_chunk = args.save_chunk or config.get("save_chunk", False)
 remove_silence = args.remove_silence or config.get("remove_silence", False)
-# load_vocoder_from_local = args.load_vocoder_from_local or config.get("load_vocoder_from_local", False)
 
-# vocoder_name = args.vocoder_name or config.get("vocoder_name", mel_spec_type)
-# target_rms = args.target_rms or config.get("target_rms", target_rms)
 cross_fade_duration = args.cross_fade_duration or config.get("cross_fade_duration", cross_fade_duration)
-# nfe_step = args.nfe_step or config.get("nfe_step", nfe_step)
-# cfg_strength = args.cfg_strength or config.get("cfg_strength", cfg_strength)
-# sway_sampling_coef = args.sway_sampling_coef or config.get("sway_sampling_coef", sway_sampling_coef)
-# speed = args.speed or config.get("speed", speed)
-# fix_duration = args.fix_duration or config.get("fix_duration", fix_duration)
-
-
-# # patches for pip pkg user
-# if "infer/examples/" in ref_audio:
-#     ref_audio = str(files("f5_tts").joinpath(f"{ref_audio}"))
-# if "infer/examples/" in gen_file:
-#     gen_file = str(files("f5_tts").joinpath(f"{gen_file}"))
-# if "voices" in config:
-#     for voice in config["voices"]:
-#         voice_ref_audio = config["voices"][voice]["ref_audio"]
-#         if "infer/examples/" in voice_ref_audio:
-#             config["voices"][voice]["ref_audio"] = str(files("f5_tts").joinpath(f"{voice_ref_audio}"))
-
 
 # ignore gen_text if gen_file provided
 
@@ -261,7 +140,6 @@ if gen_file:
 # output path
 
 wave_path = Path(output_dir) / output_file
-# spectrogram_path = Path(output_dir) / "infer_cli_out.png"
 if save_chunk:
     output_chunk_dir = os.path.join(output_dir, f"{Path(output_file).stem}_chunks")
     if not os.path.exists(output_chunk_dir):

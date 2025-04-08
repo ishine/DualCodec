@@ -45,8 +45,7 @@ def load_dualcodec_valle_ar_12hzv1():
 def load_dualcodec_valle_nar_12hzv1():
     TTS_MODEL_CFG = {
         "model": "valle_nar",
-        # "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_nar_dualcodec12hzv1.safetensors",
-        "ckpt_path": "/gluster-ssd-tts/jiaqi_repos/model.safetensors",
+        "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_nar_12hzv1.safetensors",
         "cfg_path": "../conf_tts/model/valle_nar/valle_nar.yaml"
     }
     model = instantiate_model(
