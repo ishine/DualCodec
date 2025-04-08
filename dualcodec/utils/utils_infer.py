@@ -19,6 +19,7 @@ import torch
 import torchaudio
 import tqdm
 from huggingface_hub import snapshot_download, hf_hub_download
+from dualcodec.utils import logger
 try:
     from pydub import AudioSegment, silence
     from transformers import pipeline
@@ -220,6 +221,7 @@ def load_checkpoint(model, ckpt_path, device: str, dtype=None, use_ema=True):
         from safetensors.torch import load_file
 
         checkpoint = load_file(ckpt_path, device=device)
+        logger.info(f"Load checkpoint from {ckpt_path}")
     else:
         checkpoint = torch.load(ckpt_path, map_location=device, weights_only=True)
 

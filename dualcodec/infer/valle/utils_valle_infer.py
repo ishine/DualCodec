@@ -27,6 +27,34 @@ sway_sampling_coef = -1.0
 speed = 1.0
 fix_duration = None
 
+from dualcodec.utils.utils_infer import instantiate_model, load_checkpoint
+# load models
+def load_dualcodec_valle_ar_12hzv1():
+    TTS_MODEL_CFG = {
+        "model": "valle_ar",
+        "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_ar_12hzv1.safetensors",
+        # "ckpt_path": "dualcodec_tts_ckpts/dualcodec_valle_ar_12hzv1.safetensors",
+        "cfg_path": "../conf_tts/model/valle_ar/llama_250M.yaml"
+    }
+    model = instantiate_model(
+        model_cfg_path=TTS_MODEL_CFG["cfg_path"],
+    ).half().eval()
+    ckpt_path = TTS_MODEL_CFG["ckpt_path"]
+    load_checkpoint(model, ckpt_path, use_ema=False, device=device,)
+    return model
+def load_dualcodec_valle_nar_12hzv1():
+    TTS_MODEL_CFG = {
+        "model": "valle_nar",
+        # "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_nar_dualcodec12hzv1.safetensors",
+        "ckpt_path": "/gluster-ssd-tts/jiaqi_repos/model.safetensors",
+        "cfg_path": "../conf_tts/model/valle_nar/valle_nar.yaml"
+    }
+    model = instantiate_model(
+        model_cfg_path=TTS_MODEL_CFG["cfg_path"],
+    ).half().eval()
+    ckpt_path = TTS_MODEL_CFG["ckpt_path"]
+    load_checkpoint(model, ckpt_path, use_ema=False, device=device,)
+    return model
 
 def infer_process(
     ref_audio,
