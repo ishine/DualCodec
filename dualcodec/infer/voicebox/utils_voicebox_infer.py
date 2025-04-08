@@ -77,8 +77,6 @@ def voicebox_inference(
 
 if __name__ == '__main__':
     from dualcodec.model_tts.voicebox.voicebox_models import voicebox_300M, extract_normalized_mel_spec_50hz
-    # voicebox_model_obj = voicebox_300M().to(device)
-    # TODO load checkpoint
     voicebox_model_obj = load_voicebox_300M_model(device=device)
 
     vocoder_decode_func, mel_model = get_vocoder_decode_func_and_mel_spec(device=device)

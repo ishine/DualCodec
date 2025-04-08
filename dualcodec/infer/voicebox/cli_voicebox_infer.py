@@ -31,7 +31,6 @@ from dualcodec.utils.utils_infer import (
     device,
     package_dir,
 )
-from dualcodec.infer.valle.utils_valle_infer import infer_process
 
 parser = argparse.ArgumentParser(
     prog="python3 infer-cli.py",

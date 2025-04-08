@@ -32,4 +32,5 @@ tts = [
     "accelerate>=1.0",
     "datasets",
     "openai-whisper",
+    "cn2an",
 ]
