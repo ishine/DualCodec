@@ -139,11 +139,20 @@ python -m dualcodec.infer.valle.cli_valle_infer --ref_audio <path_to_ref_audio> 
 ```
 You can also leave all options empty and it will use the default values.
 
+### DualCodec-Voicebox
+#### CLI Inference
+```bash
+python -m dualcodec.infer.voicebox.cli_voicebox_infer --ref_audio <path_to_ref_audio> --output_dir test --output_file test.wav
+```
+You can also leave all options empty and it will use the default values.
 
 
-FAQ
-pip install -U wandb protobuf
-pip install -U transformers
+
+### FAQ
+If you meet problems with environment in this stage, try the following:
+```
+pip install -U wandb protobuf transformers
+```
 
 
 ## Finetuning DualCodec
