@@ -60,7 +60,7 @@ class Inference:
     Inference class for DualCodec.
     """
     def __init__(
-        self, dualcodec_model, dualcodec_path=cached_path("hf://amphion/dualcodec"), w2v_path=cached_path("hf://facebook/w2v-bert-2.0"), device="cuda", autocast=True, **kwargs
+        self, dualcodec_model, dualcodec_path="hf://amphion/dualcodec", w2v_path="hf://facebook/w2v-bert-2.0", device="cuda", autocast=True, **kwargs
     ) -> None:
         """
         Inputs:
@@ -70,6 +70,9 @@ class Inference:
         - device: str, device to run the model
         - autocast: bool, whether to use autocast to fp16 for model inference
         """
+        dualcodec_path = cached_path(dualcodec_path)
+        w2v_path = cached_path(w2v_path)
+
         if not torch.cuda.is_available():
             warnings.warn("CUDA is not available, running on CPU.")
             device = "cpu"
