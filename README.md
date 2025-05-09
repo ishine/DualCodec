@@ -12,7 +12,7 @@
 ## About
 DualCodec is a low-frame-rate (12.5Hz or 25Hz), semantically-enhanced (with SSL feature) Neural Audio Codec designed to extract discrete tokens for efficient speech generation.
 
-You can check out our paper and our [demo page](https://dualcodec.github.io/).
+You can check out its [demo page](https://dualcodec.github.io/).
 The overview of DualCodec system is shown in the following figure:
 
 <!-- show dualcodec.png -->
@@ -25,9 +25,9 @@ pip install dualcodec
 ```
 
 ## News
-- 2025-03-30: Added automatic downloading from huggingface. Uploaded some TTS models.
+- 2025-03-30: Added automatic downloading from huggingface. Uploaded some TTS models (DualCodec-VALLE, DualCodec-Voicebox).
 - 2025-01-22: I added training and finetuning instructions for DualCodec, as well as a gradio interface. Version is v0.3.0.
-- 2025-01-16: Finished releasing DualCodec inference codes, the version is v0.1.0. Latest versions are synced to pypi.
+- 2025-01-16: Finished writing DualCodec inference codes, the version is v0.1.0. Latest versions are synced to pypi.
 
 ## Available models
 <!-- - 12hz_v1: DualCodec model trained with 12Hz sampling rate. 
@@ -209,4 +209,4 @@ data.segment_speech.segment_length=24000
 ```
 
 ## Citation
-
+Coming soon
