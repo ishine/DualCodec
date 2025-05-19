@@ -25,6 +25,7 @@ pip install dualcodec
 ```
 
 ## News
+- 2025-05-19: DualCodec is accepted to Interspeech 2025!
 - 2025-03-30: Added automatic downloading from huggingface. Uploaded some TTS models (DualCodec-VALLE, DualCodec-Voicebox).
 - 2025-01-22: I added training and finetuning instructions for DualCodec, as well as a gradio interface. Version is v0.3.0.
 - 2025-01-16: Finished writing DualCodec inference codes, the version is v0.1.0. Latest versions are synced to pypi.
@@ -209,4 +210,9 @@ data.segment_speech.segment_length=24000
 ```
 
 ## Citation
-Coming soon
+@article{dualcodec,
+    title={DualCodec: A Low-Frame-Rate, Semantically-Enhanced Neural Audio Codec for Speech Generation},
+    author={Jiaqi Li, Xiaolong Lin, Zhekai Li, Shixi Huang, Yuancheng Wang, Chaoren Wang, Zhenpeng Zhang, Zhizheng Wu},
+    year={2025},
+    journal={Interspeech 2025},
+}
