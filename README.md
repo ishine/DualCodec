@@ -212,7 +212,7 @@ data.segment_speech.segment_length=24000
 ## Citation
 @article{dualcodec,
     title={DualCodec: A Low-Frame-Rate, Semantically-Enhanced Neural Audio Codec for Speech Generation},
-    author={Jiaqi Li, Xiaolong Lin, Zhekai Li, Shixi Huang, Yuancheng Wang, Chaoren Wang, Zhenpeng Zhang, Zhizheng Wu},
+    author={Jiaqi Li, Xiaolong Lin, Zhekai Li, Shixi Huang, Yuancheng Wang, Chaoren Wang, Zhenpeng Zhan, Zhizheng Wu},
     year={2025},
     journal={Interspeech 2025},
 }
