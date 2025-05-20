@@ -2,11 +2,11 @@
 
 # DualCodec: A Low-Frame-Rate, Semantically-Enhanced Neural Audio Codec for Speech Generation
 
-[![arXiv](https://img.shields.io/badge/arXiv-coming_soon-brightgreen.svg?style=flat-square)](https://arxiv.org/)
+[![arXiv](https://img.shields.io/badge/arXiv-2505.13000-brightgreen.svg?style=flat-square)](http://arxiv.org/abs/2505.13000)
 [![githubio](https://img.shields.io/badge/GitHub.io-Demo_Page-blue?logo=Github&style=flat-square)](https://dualcodec.github.io/)
 [![PyPI](https://img.shields.io/pypi/v/dualcodec?color=blue&label=PyPI&logo=PyPI&style=flat-square)](https://pypi.org/project/dualcodec/)
-![Amphion](https://img.shields.io/badge/Amphion-Stable_Release-blue?style=flat-square)
 ![GitHub](https://img.shields.io/badge/Github-Dev_Release-pink?logo=Github&style=flat-square)
+![Amphion](https://img.shields.io/badge/Amphion-Stable_Release-blue?style=flat-square)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1VvUhsDffLdY5TdNuaqlLnYzIoXhvI8MK#scrollTo=Lsos3BK4J-4E)
 
 ## About
@@ -210,9 +210,11 @@ data.segment_speech.segment_length=24000
 ```
 
 ## Citation
+```
 @inproceedings{dualcodec,
   title     = {DualCodec: A Low-Frame-Rate, Semantically-Enhanced Neural Audio Codec for Speech Generation},
   author    = {Li, Jiaqi and Lin, Xiaolong and Li, Zhekai and Huang, Shixi and Wang, Yuancheng and Wang, Chaoren and Zhan, Zhenpeng and Wu, Zhizheng},
   booktitle = {Proceedings of Interspeech 2025},
   year      = {2025}
 }
+```
