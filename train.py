@@ -1,3 +1,8 @@
+# Copyright (c) 2025 Amphion.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
 """
 Launch training scripts
 """
@@ -20,7 +25,7 @@ def train(cfg):
 @hydra.main(
     version_base="1.3",
     config_path="./dualcodec/conf",
-    config_name="moshi_ar_devbox.yaml",
+    config_name="dualcodec_train.yaml",
 )
 def main(cfg: DictConfig) -> Optional[float]:    
     # train the model

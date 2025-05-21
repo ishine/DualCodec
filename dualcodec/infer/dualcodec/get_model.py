@@ -1,3 +1,7 @@
+# Copyright (c) 2025 Amphion.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 
 model_id_to_fname = {
     "12hz_v1": "dualcodec_12hz_16384_4096.safetensors",
