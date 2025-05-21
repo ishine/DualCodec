@@ -59,8 +59,8 @@ audio = audio.reshape(1,1,-1)
 audio = audio.to("cuda")
 # extract codes, for example, using 8 quantizers here:
 semantic_codes, acoustic_codes = dualcodec_inference.encode(audio, n_quantizers=8)
-# semantic_codes shape: torch.Size([1, 1, T])
-# acoustic_codes shape: torch.Size([1, n_quantizers-1, T])
+# semantic_codes shape: torch.Size([B, 1, T])
+# acoustic_codes shape: torch.Size([B, n_quantizers-1, T])
 
 # produce output audio
 out_audio = dualcodec_inference.decode(semantic_codes, acoustic_codes)
@@ -111,7 +111,11 @@ torchaudio.save("out.wav", out_audio.cpu().squeeze(0), 24000)
 
 See "example.ipynb" for a running example.
 
-### 3. Gradio interface:
+### 3. Google Colab
+The notebook provides a demo of reconstructing audios using different number of VQ codebooks:
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1VvUhsDffLdY5TdNuaqlLnYzIoXhvI8MK#scrollTo=Lsos3BK4J-4E)
+
+### 4. Gradio interface
 If you want to use the Gradio interface, you can run the following command:
 ```bash
 python -m dualcodec.app
@@ -156,6 +160,33 @@ pip install -U wandb protobuf transformers
 ```
 
 
+## Training DualCodec from scratch
+1. Install other necessary components for training:
+```bash
+pip install "dualcodec[tts]"
+```
+2. Clone this repository and `cd` to the project root folder (the folder that contains this readme).
+
+3. To run example training on example Emilia German data:
+```bash
+accelerate launch train.py --config-name=dualcodec_train \
+model=dualcodec_12hz_16384_4096_8vq \
+trainer.batch_size=3 \
+data.segment_speech.segment_length=24000
+```
+This trains from scratch a v1_12hz model with a training batch size of 3. (typically you need larger batch sizes like 10)
+
+To train a v1_25Hz model:
+```bash
+accelerate launch train.py --config-name=dualcodec_train \
+model=dualcodec_25hz_16384_1024_12vq \
+trainer.batch_size=3 \
+data.segment_speech.segment_length=24000
+
+```
+
+
+
 ## Finetuning DualCodec
 1. Install other necessary components for training:
 ```bash
@@ -183,31 +214,6 @@ trainer.batch_size=3 \
 data.segment_speech.segment_length=24000
 ```
 
-
-## Training DualCodec from scratch
-1. Install other necessary components for training:
-```bash
-pip install "dualcodec[tts]"
-```
-2. Clone this repository and `cd` to the project root folder (the folder that contains this readme).
-
-3. To run example training on example Emilia German data:
-```bash
-accelerate launch train.py --config-name=dualcodec_train \
-model=dualcodec_12hz_16384_4096_8vq \
-trainer.batch_size=3 \
-data.segment_speech.segment_length=24000
-```
-This trains from scratch a v1_12hz model with a training batch size of 3. (typically you need larger batch sizes like 10)
-
-To train a v1_25Hz model:
-```bash
-accelerate launch train.py --config-name=dualcodec_train \
-model=dualcodec_25hz_16384_1024_12vq \
-trainer.batch_size=3 \
-data.segment_speech.segment_length=24000
-
-```
 
 ## Citation
 ```
