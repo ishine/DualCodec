@@ -102,7 +102,7 @@ semantic_codes, acoustic_codes = dualcodec_inference.encode(audio, n_quantizers=
 # semantic_codes shape: torch.Size([1, 1, T])
 # acoustic_codes shape: torch.Size([1, n_quantizers-1, T])
 
-# produce output audio
+# produce output audio. If `acoustic_codes=None` is passed, will decode only semantic codes (RVQ-1)
 out_audio = dualcodec_inference.decode(semantic_codes, acoustic_codes)
 
 # save output audio
@@ -112,7 +112,7 @@ torchaudio.save("out.wav", out_audio.cpu().squeeze(0), 24000)
 See "example.ipynb" for a running example.
 
 ### 3. Google Colab
-The notebook provides a demo of reconstructing audios using different number of VQ codebooks:
+The notebook provides a demo of reconstructing audios using different number of RVQ layers:
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1VvUhsDffLdY5TdNuaqlLnYzIoXhvI8MK#scrollTo=Lsos3BK4J-4E)
 
 ### 4. Gradio interface
