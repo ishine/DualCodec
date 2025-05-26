@@ -1,3 +1,7 @@
+# Copyright (c) 2025 Amphion.
+#
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
 import re
 
 chinese_char_pattern = re.compile(r"[\u4e00-\u9fff]+")
