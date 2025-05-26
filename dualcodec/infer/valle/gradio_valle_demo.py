@@ -41,6 +41,10 @@ def process_tts(
     gen_text,
     remove_silence=False,
     cross_fade_duration=0.15,
+    temperature=1.0,
+    top_k=15,
+    top_p=0.85,
+    repeat_penalty=1.1,
     progress=gr.Progress(),
 ):
     if not ref_audio:
@@ -69,6 +73,10 @@ def process_tts(
         speed=speed,
         show_info=gr.Info,
         progress=progress,
+        temperature=temperature,
+        top_k=top_k,
+        top_p=top_p,
+        repeat_penalty=repeat_penalty,
     )
 
     # Remove silence if requested
@@ -104,6 +112,42 @@ with gr.Blocks(title="Valle TTS Demo") as demo:
                 lines=4,
             )
             
+            with gr.Accordion("Generation Parameters", open=False):
+                with gr.Row():
+                    temperature = gr.Slider(
+                        minimum=0.1,
+                        maximum=2.0,
+                        value=1.0,
+                        step=0.1,
+                        label="Temperature",
+                        info="Higher values make output more random, lower values more deterministic",
+                    )
+                    top_k = gr.Slider(
+                        minimum=1,
+                        maximum=50,
+                        value=15,
+                        step=1,
+                        label="Top-K",
+                        info="Number of highest probability tokens to consider",
+                    )
+                with gr.Row():
+                    top_p = gr.Slider(
+                        minimum=0.1,
+                        maximum=1.0,
+                        value=0.85,
+                        step=0.05,
+                        label="Top-P",
+                        info="Cumulative probability threshold for token selection",
+                    )
+                    repeat_penalty = gr.Slider(
+                        minimum=1.0,
+                        maximum=2.0,
+                        value=1.1,
+                        step=0.1,
+                        label="Repeat Penalty",
+                        info="Penalty for repeated tokens (higher = less repetition)",
+                    )
+            
             with gr.Row():
                 remove_silence = gr.Checkbox(
                     label="Remove Silence",
@@ -137,6 +181,10 @@ with gr.Blocks(title="Valle TTS Demo") as demo:
             gen_text,
             remove_silence,
             cross_fade,
+            temperature,
+            top_k,
+            top_p,
+            repeat_penalty,
         ],
         outputs=[output_audio],
     )
