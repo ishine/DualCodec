@@ -18,8 +18,8 @@ def replace_corner_mark(text):
     :param text:
     :return:
     """
-    text = text.replace("²", "平方")
-    text = text.replace("³", "立方")
+    text = text.replace("²", "square")
+    text = text.replace("³", "cube")
     return text
 
 
