@@ -66,6 +66,7 @@ def segment_w2v(data, segment_length=5 * 50, mode="train"):
             sample["speech_feat_mask"] = sample["speech_feat_mask"][st:ed]
             yield sample
 
+
 def segment_speech(data, segment_length=5 * 24000, mode="train"):
     """Segment and pad speech data for training codecs."""
     print("Segment speech length:", segment_length)
@@ -76,10 +77,10 @@ def segment_speech(data, segment_length=5 * 24000, mode="train"):
             # Pad speech to match the segment length
             pad_width = segment_length - speech_length
             sample["speech"] = torch.nn.functional.pad(
-                sample["speech"], 
+                sample["speech"],
                 (0, pad_width),  # Pad at the end
-                mode='constant', 
-                value=0  # Pad with zeros
+                mode="constant",
+                value=0,  # Pad with zeros
             )
             yield sample
         else:
@@ -88,6 +89,7 @@ def segment_speech(data, segment_length=5 * 24000, mode="train"):
             ed = st + segment_length
             sample["speech"] = sample["speech"][..., st:ed]
             yield sample
+
 
 # def loudness_norm(
 #     audio: torch.Tensor, rate: int, peak=-1.0, loudness=-23.0, block_size=0.400
@@ -127,17 +129,21 @@ def w2v_feature(data, feature_extractor, mode="train", make_multiple_of=1):
         if sample["sample_rate"] != 16000:
             resampler = torchaudio.transforms.Resample(sample["sample_rate"], 16000)
             tmp_speech = resampler(sample["speech"])
-            feats = feature_extractor(tmp_speech, sampling_rate=16000, return_tensors='pt')
+            feats = feature_extractor(
+                tmp_speech, sampling_rate=16000, return_tensors="pt"
+            )
         else:
-            feats = feature_extractor(sample["speech"], sampling_rate=16000, return_tensors='pt')
-        
-        if 'input_values' in feats: # hubert extractor
-            sample["speech_feat"] = feats["input_values"].squeeze(0).squeeze(0) # (1,T)
-            sample["speech_feat_mask"] = torch.ones(1,1)
+            feats = feature_extractor(
+                sample["speech"], sampling_rate=16000, return_tensors="pt"
+            )
+
+        if "input_values" in feats:  # hubert extractor
+            sample["speech_feat"] = feats["input_values"].squeeze(0).squeeze(0)  # (1,T)
+            sample["speech_feat_mask"] = torch.ones(1, 1)
             yield sample
-        else: # wav2vec2.0 extractor
+        else:  # wav2vec2.0 extractor
             sample["speech_feat"] = feats["input_features"][0]
-            
+
             sample["speech_feat_mask"] = feats["attention_mask"][0]
             start_idx = sample["speech_feat"].shape[0] % make_multiple_of
             sample["speech_feat"] = sample["speech_feat"][start_idx:]
@@ -145,7 +151,14 @@ def w2v_feature(data, feature_extractor, mode="train", make_multiple_of=1):
             yield sample
 
 
-def gluster_opener(data, mode="train", num_epochs=1, manual_dist_sampler=False, min_seconds=3.0, max_seconds=45.0):
+def gluster_opener(
+    data,
+    mode="train",
+    num_epochs=1,
+    manual_dist_sampler=False,
+    min_seconds=3.0,
+    max_seconds=45.0,
+):
     """
     WARNING: should set `manual_dist_sampler=False` if the datalist on each process is already disjoint.
     Set it to True if the datalist is the same across all procs, and you want distributed sampler.
@@ -155,7 +168,9 @@ def gluster_opener(data, mode="train", num_epochs=1, manual_dist_sampler=False, 
         # assert dist.is_initialized(), "Distributed mode requires initialized process group"
         rank = dist.get_rank()  # Get the current process rank
         world_size = dist.get_world_size()  # Total number of processes
-        print(f"[Rank {rank}] Initialized with manual_dist_sampler=True. Total processes: {world_size}.")
+        print(
+            f"[Rank {rank}] Initialized with manual_dist_sampler=True. Total processes: {world_size}."
+        )
     else:
         rank = 0  # Default to rank 0 when not in distributed mode
         world_size = 1  # Treat as single process
@@ -166,17 +181,19 @@ def gluster_opener(data, mode="train", num_epochs=1, manual_dist_sampler=False, 
         for i, sample in enumerate(data):
             # Distributed sampling: only handle samples that match the current process
             if manual_dist_sampler and (i % world_size != rank):
-                print(f"[Rank {rank}] Skipping sample {i} in epoch {epoch} (not assigned to this process).")
+                print(
+                    f"[Rank {rank}] Skipping sample {i} in epoch {epoch} (not assigned to this process)."
+                )
                 continue
 
             # Create a new sample dictionary with the necessary modifications
             new_sample = copy.deepcopy(sample["src"])
-            new_sample['epoch'] = epoch  # Add epoch information
+            new_sample["epoch"] = epoch  # Add epoch information
 
-            if hasattr(new_sample, 'duration'):
-                if new_sample['duration'] < min_seconds:
+            if hasattr(new_sample, "duration"):
+                if new_sample["duration"] < min_seconds:
                     continue
-                if new_sample['duration'] > max_seconds:
+                if new_sample["duration"] > max_seconds:
                     continue
 
             # Print debug information about the yielded sample
@@ -185,7 +202,6 @@ def gluster_opener(data, mode="train", num_epochs=1, manual_dist_sampler=False, 
 
             # Yield the modified sample
             yield new_sample
-        
 
 
 def gluster_filter(
@@ -222,19 +238,24 @@ def gluster_filter(
     Returns:
         Iterable[{key, wav, label, sample_rate}]
     """
-    
+
     for sample in data:
         # sample['speech'] = torch.randn(100000)
         new_sample = copy.deepcopy(sample)
         start_time = time.time()
         try:
             if is_emilia:
-                new_sample["speech"] = torch.tensor(new_sample['mp3']['array'], dtype=torch.float32).reshape(1,-1)
-                del new_sample['mp3']['array']
-                new_sample["sample_rate"] = new_sample['mp3']['sampling_rate']
-                new_sample["duration"] = len(new_sample["speech"]) / new_sample["sample_rate"]
+                new_sample["speech"] = torch.tensor(
+                    new_sample["mp3"]["array"], dtype=torch.float32
+                ).reshape(1, -1)
+                del new_sample["mp3"]["array"]
+                new_sample["sample_rate"] = new_sample["mp3"]["sampling_rate"]
+                new_sample["duration"] = (
+                    len(new_sample["speech"]) / new_sample["sample_rate"]
+                )
             elif load_from_tar:
                 from .gluster_dataset import load_audio_from_tar
+
                 new_sample["speech"], new_sample["sample_rate"] = load_audio_from_tar(
                     new_sample["wav"]
                 )
@@ -247,9 +268,11 @@ def gluster_filter(
             raise e
         end_time = time.time()
         if (new_sample["speech"].shape[-1] // new_sample["sample_rate"]) > 45.0:
-            print('too long audio, skipped')
+            print("too long audio, skipped")
             continue
-        new_sample["speech"] = new_sample["speech"][..., new_sample["speech"].shape[-1]%make_multiple_of:]
+        new_sample["speech"] = new_sample["speech"][
+            ..., new_sample["speech"].shape[-1] % make_multiple_of :
+        ]
         new_sample["load_audio_time"] = end_time - start_time
         if not ignore_text:
             num_frames = new_sample["speech"].size(1) / new_sample["sample_rate"] * 50
@@ -480,7 +503,15 @@ def static_batch(data, batch_size=16):
         yield buf
 
 
-def dynamic_batch(data, max_frames_in_batch=12000, max_batch_size=50, mode="train", ignore_text=False, min_factor=0.95, max_factor=1.5):
+def dynamic_batch(
+    data,
+    max_frames_in_batch=12000,
+    max_batch_size=50,
+    mode="train",
+    ignore_text=False,
+    min_factor=0.95,
+    max_factor=1.5,
+):
     """Dynamic batch data with a quadratic exponent that scales based on sequence length."""
     buf = []
     longest_frames = 0
@@ -492,12 +523,14 @@ def dynamic_batch(data, max_frames_in_batch=12000, max_batch_size=50, mode="trai
 
         # Dynamically adjust the quadratic factor based on sequence length
         length_ratio = new_sample_frames / max_frames_in_batch
-        quadratic_factor = min_factor + (max_factor - min_factor) * length_ratio  # Scales within [min_factor, max_factor]
+        quadratic_factor = (
+            min_factor + (max_factor - min_factor) * length_ratio
+        )  # Scales within [min_factor, max_factor]
 
         # Apply the dynamic quadratic factor to `new_sample_frames`
-        adjusted_frames = int(new_sample_frames ** quadratic_factor)
+        adjusted_frames = int(new_sample_frames**quadratic_factor)
         longest_frames = max(longest_frames, adjusted_frames)
-        
+
         frames_after_padding = longest_frames * (len(buf) + 1)
 
         # Check batch size and frame constraints
@@ -511,7 +544,7 @@ def dynamic_batch(data, max_frames_in_batch=12000, max_batch_size=50, mode="trai
                 longest_frames = adjusted_frames
         else:
             buf.append(sample)
-    
+
     if len(buf) > 0:
         yield buf
 
@@ -537,7 +570,12 @@ def batch(
 
 
 def gluster_padding(
-    data, use_spk_embedding=False, ignore_text=False, return_speech=False, extract_spec=False, mode="train"
+    data,
+    use_spk_embedding=False,
+    ignore_text=False,
+    return_speech=False,
+    extract_spec=False,
+    mode="train",
 ):
     """Padding the data into training data
 
@@ -552,7 +590,9 @@ def gluster_padding(
         try:
             speech_feat = [i["speech_feat"] for i in sample]
             speech_feat = pad_sequence(speech_feat, batch_first=True, padding_value=0)
-            packed_batch_features["input_features"] = speech_feat.contiguous()  # w2v features
+            packed_batch_features["input_features"] = (
+                speech_feat.contiguous()
+            )  # w2v features
 
             packed_batch_features["attention_mask"] = pad_sequence(
                 [utt["speech_feat_mask"].float() for utt in sample], batch_first=True
@@ -583,16 +623,20 @@ def gluster_padding(
 
         if extract_spec:
             import s3tokenizer
+
             mels = []
             for b in sample:
                 # s3tokenizer uses 16khz mel
-                if b['sample_rate'] != 16000:
-                    b['speech'] = torchaudio.functional.resample(b['speech'], b['sample_rate'], 16000)
-                
-                audio = b['speech'][0]  # get the first channel
-                mels.append(s3tokenizer.log_mel_spectrogram(audio))
-            packed_batch_features['mels'], packed_batch_features['mels_lens'] = s3tokenizer.padding(mels)
+                if b["sample_rate"] != 16000:
+                    b["speech"] = torchaudio.functional.resample(
+                        b["speech"], b["sample_rate"], 16000
+                    )
 
+                audio = b["speech"][0]  # get the first channel
+                mels.append(s3tokenizer.log_mel_spectrogram(audio))
+            packed_batch_features["mels"], packed_batch_features["mels_lens"] = (
+                s3tokenizer.padding(mels)
+            )
 
         if not use_spk_embedding:
             packed_batch_features["embedding"] = None  # no speaker embedding
@@ -600,11 +644,12 @@ def gluster_padding(
         for key in packed_batch_features.keys():
             if isinstance(packed_batch_features[key], torch.Tensor):
                 if torch.isnan(packed_batch_features[key]).any():
-                    print('NaN found in preprocessor, key', key)
+                    print("NaN found in preprocessor, key", key)
                     continue
-        packed_batch_features['epoch'] = sample[0]['epoch']
-        packed_batch_features['duration'] = sum(s['duration'] for s in sample)
-        packed_batch_features['load_audio_time'] = max(s['load_audio_time'] for s in sample)
-        packed_batch_features['sample_rate'] = sample[0]['sample_rate']
+        packed_batch_features["epoch"] = sample[0]["epoch"]
+        packed_batch_features["duration"] = sum(s["duration"] for s in sample)
+        packed_batch_features["load_audio_time"] = max(
+            s["load_audio_time"] for s in sample
+        )
+        packed_batch_features["sample_rate"] = sample[0]["sample_rate"]
         yield packed_batch_features
-

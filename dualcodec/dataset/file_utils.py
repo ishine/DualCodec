@@ -4,9 +4,7 @@
 # Copyright (c) 2024 Amphion. All Rights Reserved
 #
 ################################################################################
-"""
-
-"""
+""" """
 import json
 import torchaudio
 

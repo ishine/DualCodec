@@ -26,6 +26,7 @@ import torch.nn.functional as F
 import random
 from einops import rearrange
 
+
 class DualCodec(nn.Module):
     def __init__(
         self,
@@ -69,26 +70,36 @@ class DualCodec(nn.Module):
         self.encoder_rates = encoder_rates
         self.convnext_encoder = nn.Sequential(
             WNConv1d(
-                1024, convnext_dim, kernel_size=1,
+                1024,
+                convnext_dim,
+                kernel_size=1,
             ),
-            *[ConvNeXtBlock(
-                dim=convnext_dim,
-                intermediate_dim=2048,
-                is_causal=is_causal
-            ) for _ in range(convnext_layers)],  # Unpack the list directly into nn.Sequential
+            *[
+                ConvNeXtBlock(
+                    dim=convnext_dim, intermediate_dim=2048, is_causal=is_causal
+                )
+                for _ in range(convnext_layers)
+            ],  # Unpack the list directly into nn.Sequential
         )
         self.semantic_vq = ResidualVectorQuantize(
-            convnext_dim, n_codebooks=1, codebook_size=semantic_codebook_size,
+            convnext_dim,
+            n_codebooks=1,
+            codebook_size=semantic_codebook_size,
             codebook_dim=semantic_codebook_dim,
         )
         self.convnext_decoder = nn.Sequential(
-            *[ConvNeXtBlock(
-                dim=convnext_dim,
-                intermediate_dim=2048,
-                is_causal=is_causal,
-            ) for _ in range(convnext_layers)],  # Unpack the list directly into nn.Sequential
+            *[
+                ConvNeXtBlock(
+                    dim=convnext_dim,
+                    intermediate_dim=2048,
+                    is_causal=is_causal,
+                )
+                for _ in range(convnext_layers)
+            ],  # Unpack the list directly into nn.Sequential
             WNConv1d(
-                convnext_dim, 1024, kernel_size=1,
+                convnext_dim,
+                1024,
+                kernel_size=1,
             ),
         )
         if not self.decode_semantic_for_codec:
@@ -96,14 +107,30 @@ class DualCodec(nn.Module):
 
     def semantic_quantize(self, semantic_repr):
         semantic = self.convnext_encoder(semantic_repr)
-        semantic, codes, latents, commitment_loss, codebook_loss, first_layer_quantized = self.semantic_vq(semantic)
-        codes = rearrange(codes, 'b 1 t -> b t')
+        (
+            semantic,
+            codes,
+            latents,
+            commitment_loss,
+            codebook_loss,
+            first_layer_quantized,
+        ) = self.semantic_vq(semantic)
+        codes = rearrange(codes, "b 1 t -> b t")
         return codes
 
-    def encode(self, audio_data, num_quantizers=None, sample_rate=24000, semantic_repr=None):
+    def encode(
+        self, audio_data, num_quantizers=None, sample_rate=24000, semantic_repr=None
+    ):
         assert not self.training
         semantic = self.convnext_encoder(semantic_repr)
-        semantic, codes, latents, commitment_loss, codebook_loss, first_layer_quantized = self.semantic_vq(semantic)
+        (
+            semantic,
+            codes,
+            latents,
+            commitment_loss,
+            codebook_loss,
+            first_layer_quantized,
+        ) = self.semantic_vq(semantic)
         if self.decode_semantic_for_codec:
             semantic = self.convnext_decoder(semantic)
         semantic_codes = codes
@@ -114,8 +141,13 @@ class DualCodec(nn.Module):
         if num_quantizers is not None:
             num_quantizers -= 1
 
-        acoustic_codes = self.dac.encode(audio_data, sample_rate=sample_rate, n_quantizers=num_quantizers, subtracted_latent=semantic)[1]
-        return semantic_codes, acoustic_codes # [B, n_q, T]
+        acoustic_codes = self.dac.encode(
+            audio_data,
+            sample_rate=sample_rate,
+            n_quantizers=num_quantizers,
+            subtracted_latent=semantic,
+        )[1]
+        return semantic_codes, acoustic_codes  # [B, n_q, T]
 
     @torch.no_grad()
     def decode_from_codes(self, semantic_codes, acoustic_codes):
@@ -127,16 +159,24 @@ class DualCodec(nn.Module):
         audio = self.dac.decode_from_codes(acoustic_codes, semantic)
         return audio
 
-    def forward(self, 
-            audio_data: torch.Tensor,
-            sample_rate: int = 24000,
-            n_quantizers: int = None,
-            semantic_repr=None,
-            bypass_quantize_rate=0.125,
-            possibly_no_quantizer=False,
-        ):
+    def forward(
+        self,
+        audio_data: torch.Tensor,
+        sample_rate: int = 24000,
+        n_quantizers: int = None,
+        semantic_repr=None,
+        bypass_quantize_rate=0.125,
+        possibly_no_quantizer=False,
+    ):
         semantic = self.convnext_encoder(semantic_repr)
-        semantic, codes, latents, commitment_loss, codebook_loss, first_layer_quantized = self.semantic_vq(semantic)
+        (
+            semantic,
+            codes,
+            latents,
+            commitment_loss,
+            codebook_loss,
+            first_layer_quantized,
+        ) = self.semantic_vq(semantic)
         if self.decode_semantic_for_codec:
             semantic = self.convnext_decoder(semantic)
 
@@ -147,19 +187,28 @@ class DualCodec(nn.Module):
             bypass_quantize = True
         if n_quantizers is not None:
             n_quantizers = n_quantizers - 1
-        acoustic_edict = self.dac(audio_data, sample_rate, n_quantizers, subtracted_latent=semantic, bypass_quantize=bypass_quantize, possibly_no_quantizer=possibly_no_quantizer)
+        acoustic_edict = self.dac(
+            audio_data,
+            sample_rate,
+            n_quantizers,
+            subtracted_latent=semantic,
+            bypass_quantize=bypass_quantize,
+            possibly_no_quantizer=possibly_no_quantizer,
+        )
         if not self.decode_semantic_for_codec:
             # decode afterwards
             semantic = self.convnext_decoder(semantic)
 
-        semantic_edict = edict({
-            "x": semantic,
-            "codes": codes,
-            "latents": latents,
-            "penalty": commitment_loss,
-            "vq/codebook_loss": codebook_loss,
-            "metrics": {},
-            "bypassed_quantize": bypass_quantize,
-            # "first_layer_quantized": first_layer_quantized,
-        })
+        semantic_edict = edict(
+            {
+                "x": semantic,
+                "codes": codes,
+                "latents": latents,
+                "penalty": commitment_loss,
+                "vq/codebook_loss": codebook_loss,
+                "metrics": {},
+                "bypassed_quantize": bypass_quantize,
+                # "first_layer_quantized": first_layer_quantized,
+            }
+        )
         return acoustic_edict, semantic_edict

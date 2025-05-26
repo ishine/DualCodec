@@ -26,6 +26,7 @@ from loguru import logger
 
 # seed everything
 
+
 def seed_everything(seed=0):
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
@@ -50,7 +51,9 @@ def default(v, d):
 # tensor helpers
 
 
-def lens_to_mask(t: int["b"], length: int | None = None) -> bool["b n"]:  # noqa: F722 F821
+def lens_to_mask(
+    t: int["b"], length: int | None = None
+) -> bool["b n"]:  # noqa: F722 F821
     if not exists(length):
         length = t.amax()
 
@@ -58,7 +61,9 @@ def lens_to_mask(t: int["b"], length: int | None = None) -> bool["b n"]:  # noqa
     return seq[None, :] < t[:, None]
 
 
-def mask_from_start_end_indices(seq_len: int["b"], start: int["b"], end: int["b"]):  # noqa: F722 F821
+def mask_from_start_end_indices(
+    seq_len: int["b"], start: int["b"], end: int["b"]
+):  # noqa: F722 F821
     max_seq_len = seq_len.max().item()
     seq = torch.arange(max_seq_len, device=start.device).long()
     start_mask = seq[None, :] >= start[:, None]
@@ -66,7 +71,9 @@ def mask_from_start_end_indices(seq_len: int["b"], start: int["b"], end: int["b"
     return start_mask & end_mask
 
 
-def mask_from_frac_lengths(seq_len: int["b"], frac_lengths: float["b"]):  # noqa: F722 F821
+def mask_from_frac_lengths(
+    seq_len: int["b"], frac_lengths: float["b"]
+):  # noqa: F722 F821
     lengths = (frac_lengths * seq_len).long()
     max_start = seq_len - lengths
 
@@ -77,7 +84,9 @@ def mask_from_frac_lengths(seq_len: int["b"], frac_lengths: float["b"]):  # noqa
     return mask_from_start_end_indices(seq_len, start, end)
 
 
-def maybe_masked_mean(t: float["b n d"], mask: bool["b n"] = None) -> float["b d"]:  # noqa: F722
+def maybe_masked_mean(
+    t: float["b n d"], mask: bool["b n"] = None
+) -> float["b d"]:  # noqa: F722
     if not exists(mask):
         return t.mean(dim=1)
 
@@ -101,24 +110,25 @@ def list_str_to_idx(
     vocab_char_map: dict[str, int],  # {char: idx}
     padding_value=-1,
 ) -> int["b nt"]:  # noqa: F722
-    list_idx_tensors = [torch.tensor([vocab_char_map.get(c, 0) for c in t]) for t in text]  # pinyin or char style
+    list_idx_tensors = [
+        torch.tensor([vocab_char_map.get(c, 0) for c in t]) for t in text
+    ]  # pinyin or char style
     text = pad_sequence(list_idx_tensors, padding_value=padding_value, batch_first=True)
     return text
-
-
-
 
 
 def get_whisper_tokenizer():
     # whisper tokenizer
     import whisper
+
     tokenizer = whisper.tokenizer.get_tokenizer(
         multilingual=True,
-        language='en',
-        task='transcribe',
+        language="en",
+        task="transcribe",
         num_languages=100,
     )
     return tokenizer
+
 
 # def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
 #     """
@@ -167,9 +177,7 @@ def convert_char_to_pinyin(text_list, polyphone=True):
     )  # add custom trans here, to address oov
 
     def is_chinese(c):
-        return (
-            "\u3100" <= c <= "\u9fff"  # common chinese characters
-        )
+        return "\u3100" <= c <= "\u9fff"  # common chinese characters
 
     for text in text_list:
         char_list = []
@@ -180,7 +188,9 @@ def convert_char_to_pinyin(text_list, polyphone=True):
                 if char_list and seg_byte_len > 1 and char_list[-1] not in " :'\"":
                     char_list.append(" ")
                 char_list.extend(seg)
-            elif polyphone and seg_byte_len == 3 * len(seg):  # if pure east asian characters
+            elif polyphone and seg_byte_len == 3 * len(
+                seg
+            ):  # if pure east asian characters
                 seg_ = lazy_pinyin(seg, style=Style.TONE3, tone_sandhi=True)
                 for i, c in enumerate(seg):
                     if is_chinese(c):
@@ -192,7 +202,9 @@ def convert_char_to_pinyin(text_list, polyphone=True):
                         char_list.extend(c)
                     elif is_chinese(c):
                         char_list.append(" ")
-                        char_list.extend(lazy_pinyin(c, style=Style.TONE3, tone_sandhi=True))
+                        char_list.extend(
+                            lazy_pinyin(c, style=Style.TONE3, tone_sandhi=True)
+                        )
                     else:
                         char_list.append(c)
         final_text_list.append(char_list)
@@ -213,12 +225,14 @@ def repetition_found(text, length=2, tolerance=10):
             return True
     return False
 
+
 # text normalization (custom)
 def normalize_text(text, lang="zh", en_punct=True):
     from .normalization.en import normalize_en
     from .normalization.zh import normalize_zh
+
     if isinstance(text, list):
-        text = ''.join(text)
+        text = "".join(text)
     if lang == "zh":
         text = normalize_zh(text, en_punct)
     elif lang == "en":

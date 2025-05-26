@@ -121,6 +121,7 @@ punct_map = {
     "…": "...",  # 省略号和破折号
 }
 
+
 def normalize_punctuation(text):
     """
     Normalize punctuation in text by the mapping in punct_map
@@ -133,9 +134,9 @@ def normalize_punctuation(text):
     # Replace multiple spaces with a single space
     text = re.sub(r"\s+", " ", text)
 
-    text = text.replace('(', ",")
-    text = text.replace(')', ",")
-    text = text.replace(';', ",")
-    text = text.replace(':', ",")
+    text = text.replace("(", ",")
+    text = text.replace(")", ",")
+    text = text.replace(";", ",")
+    text = text.replace(":", ",")
 
     return text

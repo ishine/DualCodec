@@ -4,16 +4,21 @@
 # LICENSE file in the root directory of this source tree.
 
 from datasets import load_dataset, IterableDataset
-path = "DE/*.tar" # only for testing. please use full data
 
+path = "DE/*.tar"  # only for testing. please use full data
 
 
 class EmiliaDataset(IterableDataset):
     def __init__(self, is_debug=True):
         if is_debug:
-            self.dataset = load_dataset("amphion/Emilia-Dataset", data_files={"de": "DE/*.tar"}, split="de", streaming=True)
+            self.dataset = load_dataset(
+                "amphion/Emilia-Dataset",
+                data_files={"de": "DE/*.tar"},
+                split="de",
+                streaming=True,
+            )
         else:
-            self.dataset = load_dataset("amphion/Emilia-Dataset", streaming=True)    
+            self.dataset = load_dataset("amphion/Emilia-Dataset", streaming=True)
         # self.dataset = self.dataset.map(lambda x: x, remove_columns=["text", "text_id"])
         # self.dataset.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"])
         # self.dataset = self.dataset.train_test_split(test_size=0.1)
@@ -25,6 +30,7 @@ class EmiliaDataset(IterableDataset):
 
     def __len__(self):
         return len(self.dataset)
+
 
 if __name__ == "__main__":
     dataset = EmiliaDataset()
@@ -41,4 +47,5 @@ if __name__ == "__main__":
     # dataloader with distributed sampler
     import torch
     from torch.utils.data import DataLoader
+
     dataloader = DataLoader(dataset, batch_size=2, num_workers=2)

@@ -38,8 +38,11 @@ from dualcodec.utils.utils_infer import (
     device,
     package_dir,
 )
-from dualcodec.infer.valle.utils_valle_infer import infer_process, load_dualcodec_valle_nar_12hzv1, \
-    load_dualcodec_valle_ar_12hzv1
+from dualcodec.infer.valle.utils_valle_infer import (
+    infer_process,
+    load_dualcodec_valle_nar_12hzv1,
+    load_dualcodec_valle_ar_12hzv1,
+)
 
 parser = argparse.ArgumentParser(
     prog="python3 infer-cli.py",
@@ -109,20 +112,28 @@ logger.info("Loading Valle models...")
 ar_model = load_dualcodec_valle_ar_12hzv1()
 nar_model = load_dualcodec_valle_nar_12hzv1()
 from dualcodec.utils import get_whisper_tokenizer
+
 tokenizer_model = get_whisper_tokenizer()
 import dualcodec
+
 dualcodec_model = dualcodec.get_model("12hz_v1")
-dualcodec_inference_obj = dualcodec.Inference(dualcodec_model=dualcodec_model, device=device, autocast=True)
+dualcodec_inference_obj = dualcodec.Inference(
+    dualcodec_model=dualcodec_model, device=device, autocast=True
+)
 logger.info("Valle models loaded.")
 
 
-ref_audio = args.ref_audio or config.get("ref_audio", f"{package_dir}/infer/examples/basic/example_wav_en.wav")
+ref_audio = args.ref_audio or config.get(
+    "ref_audio", f"{package_dir}/infer/examples/basic/example_wav_en.wav"
+)
 ref_text = (
     args.ref_text
     if args.ref_text is not None
     else config.get("ref_text", "Some call me nature. Others call me mother nature.")
 )
-gen_text = args.gen_text or config.get("gen_text", "Here we generate something just for test.")
+gen_text = args.gen_text or config.get(
+    "gen_text", "Here we generate something just for test."
+)
 gen_file = args.gen_file or config.get("gen_file", "")
 
 output_dir = args.output_dir or config.get("output_dir", "tests")
@@ -133,7 +144,9 @@ output_file = args.output_file or config.get(
 save_chunk = args.save_chunk or config.get("save_chunk", False)
 remove_silence = args.remove_silence or config.get("remove_silence", False)
 
-cross_fade_duration = args.cross_fade_duration or config.get("cross_fade_duration", cross_fade_duration)
+cross_fade_duration = args.cross_fade_duration or config.get(
+    "cross_fade_duration", cross_fade_duration
+)
 
 # ignore gen_text if gen_file provided
 
@@ -161,6 +174,7 @@ if save_chunk:
 vocoder = None
 # inference process
 
+
 def main():
     main_voice = {"ref_audio": ref_audio, "ref_text": ref_text}
     if "voices" not in config:
@@ -171,8 +185,10 @@ def main():
     for voice in voices:
         print("Voice:", voice)
         print("ref_audio ", voices[voice]["ref_audio"])
-        voices[voice]["ref_audio"], voices[voice]["ref_text"] = preprocess_ref_audio_text(
-            voices[voice]["ref_audio"], voices[voice]["ref_text"]
+        voices[voice]["ref_audio"], voices[voice]["ref_text"] = (
+            preprocess_ref_audio_text(
+                voices[voice]["ref_audio"], voices[voice]["ref_text"]
+            )
         )
         print("ref_audio_", voices[voice]["ref_audio"], "\n\n")
 
@@ -219,7 +235,10 @@ def main():
             if len(gen_text_) > 200:
                 gen_text_ = gen_text_[:200] + " ... "
             sf.write(
-                os.path.join(output_chunk_dir, f"{len(generated_audio_segments)-1}_{gen_text_}.wav"),
+                os.path.join(
+                    output_chunk_dir,
+                    f"{len(generated_audio_segments)-1}_{gen_text_}.wav",
+                ),
                 audio_segment,
                 final_sample_rate,
             )

@@ -7,9 +7,10 @@ from typing import Dict, Optional, Union
 import torch
 from torch.nn.utils.rnn import pad_sequence, unpad_sequence
 
-IGNORE_ID = -100 # ignored by llama
+IGNORE_ID = -100  # ignored by llama
 
 from transformers.models.llama.modeling_llama import LlamaForCausalLM, LlamaConfig
+
 
 class LLM(torch.nn.Module):
     """
@@ -29,7 +30,7 @@ class LLM(torch.nn.Module):
         self.config = config
         self.speech_vocab_size = speech_vocab_size
 
-        self.sep_token = sep_token # offset # the last text token is used as offset
+        self.sep_token = sep_token  # offset # the last text token is used as offset
         self.eos_id = self.config.eos_token_id
         self.initial_offset = initial_offset
 
@@ -45,59 +46,77 @@ class LLM(torch.nn.Module):
     ):
         # Unpad the sequences using their lengths
         text_token = unpad_sequence(text_token, text_token_len.cpu(), batch_first=True)
-        speech_token = unpad_sequence(speech_token, speech_token_len.cpu(), batch_first=True)
+        speech_token = unpad_sequence(
+            speech_token, speech_token_len.cpu(), batch_first=True
+        )
 
         combined_tokens = []
         attention_mask_list = []
         label_list = []
-        
+
         for i in range(len(speech_token)):
             # Create the combined token (text + separator + speech)
-            combined_sequence = torch.cat([
-                text_token[i], 
-                torch.tensor([sep_token]).to(self.llm.device), 
-                speech_token[i]
-            ])
-            
+            combined_sequence = torch.cat(
+                [
+                    text_token[i],
+                    torch.tensor([sep_token]).to(self.llm.device),
+                    speech_token[i],
+                ]
+            )
+
             if pad_eos:
                 # Append EOS token if pad_eos is True
-                combined_sequence = torch.cat([combined_sequence, torch.tensor([eos_id]).to(self.llm.device)])
-            
+                combined_sequence = torch.cat(
+                    [combined_sequence, torch.tensor([eos_id]).to(self.llm.device)]
+                )
+
             combined_tokens.append(combined_sequence)
-            
+
             # Create attention mask: 1 for valid tokens (text, separator, speech, eos if applicable), 0 for padding
             combined_len = len(combined_sequence)  # Total length after concatenation
-            attention_mask = torch.ones(combined_len, dtype=torch.int32).to(self.llm.device)  # All tokens are attended
+            attention_mask = torch.ones(combined_len, dtype=torch.int32).to(
+                self.llm.device
+            )  # All tokens are attended
             attention_mask_list.append(attention_mask)
 
             # Create label: mask text tokens, separator token, and padding
             text_len = len(text_token[i])
-            label = torch.full_like(combined_sequence, IGNORE_ID).to(self.llm.device)  # Initialize with IGNORE_ID
-            label[text_len + 1:text_len + 1 + len(speech_token[i])] = speech_token[i]  # Keep only the speech tokens for label
-            
+            label = torch.full_like(combined_sequence, IGNORE_ID).to(
+                self.llm.device
+            )  # Initialize with IGNORE_ID
+            label[text_len + 1 : text_len + 1 + len(speech_token[i])] = speech_token[
+                i
+            ]  # Keep only the speech tokens for label
+
             if pad_eos:
                 # Keep EOS token in label if pad_eos is True
                 label[-1] = eos_id
-            
+
             label_list.append(label)
 
         # Calculate the length of each combined input
-        lm_input_len = torch.tensor([len(seq) for seq in combined_tokens], dtype=torch.int32)
-        
+        lm_input_len = torch.tensor(
+            [len(seq) for seq in combined_tokens], dtype=torch.int32
+        )
+
         # Pad the combined tokens sequence
         lm_input = pad_sequence(combined_tokens, batch_first=True, padding_value=0)
-        
+
         # Pad the attention mask sequence to the same length as lm_input
-        attention_mask = pad_sequence(attention_mask_list, batch_first=True, padding_value=0)  # Padding token masked
+        attention_mask = pad_sequence(
+            attention_mask_list, batch_first=True, padding_value=0
+        )  # Padding token masked
 
         # Pad the label sequence to match lm_input
-        label = pad_sequence(label_list, batch_first=True, padding_value=IGNORE_ID)  # Padding should be ignored in labels
+        label = pad_sequence(
+            label_list, batch_first=True, padding_value=IGNORE_ID
+        )  # Padding should be ignored in labels
 
         return lm_input, lm_input_len, attention_mask, label
-    
+
     @torch.inference_mode()
     def inference(
-        self, 
+        self,
         text: torch.Tensor,  # Batched input of text tokens
         text_len: torch.Tensor,  # Batched input lengths
         prompt_text: torch.Tensor,  # Batched prompt text
@@ -142,8 +161,7 @@ class LLM(torch.nn.Module):
             pad_token_id=self.config.pad_token_id,  # Padding token ID
             eos_token_id=self.eos_id,  # End-of-sequence token ID
         )
-        return generated_ids[..., lm_input.shape[-1]:-1] - self.initial_offset
-
+        return generated_ids[..., lm_input.shape[-1] : -1] - self.initial_offset
 
     def forward(
         self,
@@ -159,7 +177,7 @@ class LLM(torch.nn.Module):
             embedding: (B,)
         """
         text_token = batch["text_token"]
-        text_token = text_token + self.speech_vocab_size + self.initial_offset # offset
+        text_token = text_token + self.speech_vocab_size + self.initial_offset  # offset
         text_token_len = batch["text_token_len"]
         speech_token = batch["speech_token"] + self.initial_offset
         speech_token_len = batch["speech_token_len"]
@@ -174,8 +192,14 @@ class LLM(torch.nn.Module):
         )
 
         # 7. run lm forward
-        return_dict = self.llm(lm_input.to(self.llm.device), return_dict=True, attention_mask=lm_mask, labels=lm_label,
-                               output_attentions=False, output_hidden_states=False)
+        return_dict = self.llm(
+            lm_input.to(self.llm.device),
+            return_dict=True,
+            attention_mask=lm_mask,
+            labels=lm_label,
+            output_attentions=False,
+            output_hidden_states=False,
+        )
         loss = return_dict.loss
         accuracy_dict = {}
         return {"loss": loss, "acc": accuracy_dict}

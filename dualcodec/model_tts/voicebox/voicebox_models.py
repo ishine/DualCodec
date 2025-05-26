@@ -10,6 +10,7 @@ from einops import rearrange
 from .llama_nar import DiffLlama
 import torch.nn.functional as F
 
+
 def module_size(module: nn.Module, trainable_only: bool = False) -> int:
     """
     Calculate the total number of parameters in a PyTorch module.
@@ -21,7 +22,9 @@ def module_size(module: nn.Module, trainable_only: bool = False) -> int:
     Returns:
         int: Total number of parameters in the module.
     """
-    return sum(p.numel() for p in module.parameters() if not trainable_only or p.requires_grad)
+    return sum(
+        p.numel() for p in module.parameters() if not trainable_only or p.requires_grad
+    )
 
 
 class VoiceBox(nn.Module):
@@ -273,7 +276,7 @@ class VoiceBox(nn.Module):
         xt = z
         # t from 0 to 1: x0 = z ~ N(0, 1)
         for i in range(n_timesteps):
-            xt_input = torch.cat([prompt, xt], dim=1) # [b t c]
+            xt_input = torch.cat([prompt, xt], dim=1)  # [b t c]
             t = (0 + (i + 0.5) * h) * torch.ones(
                 z.shape[0], dtype=z.dtype, device=z.device
             )
@@ -321,6 +324,7 @@ class VoiceBox(nn.Module):
         )
         return noise, x, flow_pred, final_mask, prompt_len
 
+
 def voicebox_300M():
     model = VoiceBox(
         mel_dim=128,
@@ -338,8 +342,7 @@ def voicebox_300M():
     return model
 
 
-
-def extract_normalized_mel_spec_50hz(speech, device='cuda'):
+def extract_normalized_mel_spec_50hz(speech, device="cuda"):
     """
     Extract mel spectrogram from speech.
     Args:
@@ -348,6 +351,7 @@ def extract_normalized_mel_spec_50hz(speech, device='cuda'):
         mel: (B, T // hop_size, num_mels)
     """
     from dualcodec.utils.melspec import MelSpectrogram
+
     mel_model = MelSpectrogram(
         sampling_rate=24000,
         n_fft=1920,
@@ -366,8 +370,10 @@ def extract_normalized_mel_spec_50hz(speech, device='cuda'):
     mel_feat = mel_feat.transpose(1, 2)
     return mel_feat
 
+
 def mel_spec_50hz():
     from dualcodec.utils.melspec import MelSpectrogram
+
     mel_model = MelSpectrogram(
         sampling_rate=24000,
         n_fft=1920,
@@ -380,7 +386,8 @@ def mel_spec_50hz():
     mel_model.eval()
     return mel_model
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     model = voicebox_300M()
     size = module_size(model)
     print(size)

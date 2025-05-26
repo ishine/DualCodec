@@ -9,6 +9,7 @@ import scipy
 import torch
 from torch import nn, view_as_real, view_as_complex
 from torch import nn
+
 try:
     from torch.nn.utils import weight_norm, remove_weight_norm
 except:
@@ -17,6 +18,7 @@ from torchaudio.functional.functional import _hz_to_mel, _mel_to_hz
 from dualcodec.utils.melspec import MelSpectrogram
 import librosa
 from cached_path import cached_path
+
 
 def safe_log(x: torch.Tensor, clip_val: float = 1e-7) -> torch.Tensor:
     """
@@ -883,6 +885,7 @@ class Vocos(nn.Module):
 
         return x[:, None, :]
 
+
 def vocos_50hz():
     return Vocos(
         input_channels=128,
@@ -892,10 +895,14 @@ def vocos_50hz():
         num_layers=30,
         n_fft=1920,
         hop_size=480,
-        padding="same"
+        padding="same",
     )
 
-def get_vocos_model_spectrogram(vocoder_path=cached_path('hf://amphion/dualcodec-tts/vocos_emilia.safetensors'), device='cuda'):
+
+def get_vocos_model_spectrogram(
+    vocoder_path=cached_path("hf://amphion/dualcodec-tts/vocos_emilia.safetensors"),
+    device="cuda",
+):
     vocos_model = Vocos(
         input_channels=128,
         dim=1024,
@@ -904,15 +911,18 @@ def get_vocos_model_spectrogram(vocoder_path=cached_path('hf://amphion/dualcodec
         num_layers=30,
         n_fft=1920,
         hop_size=480,
-        padding="same"
+        padding="same",
     )
     # vocoder_path = '/gluster-ssd-tts/jiaqi_repos/vocos_emilia_singnet3k.safetensors'
     import safetensors.torch
+
     ckpt = safetensors.torch.load_file(vocoder_path)
     vocos_model.load_state_dict(ckpt)
     from .voicebox_models import extract_normalized_mel_spec_50hz
+
     vocos_model.eval().to(device)
     return vocos_model, extract_normalized_mel_spec_50hz
+
 
 @torch.inference_mode()
 def mel_to_wav_vocos(vocos_model, mel_feat):
@@ -921,32 +931,37 @@ def mel_to_wav_vocos(vocos_model, mel_feat):
     Returns:
     speech: [B, T]
     """
-    rec_speech = vocos_model(mel_feat).squeeze(1) # [B, T]
-    return rec_speech # [b,t]
+    rec_speech = vocos_model(mel_feat).squeeze(1)  # [B, T]
+    return rec_speech  # [b,t]
+
 
 @torch.inference_mode()
 def infer_vocos(vocos_model, mel_model, speech):
     """
     speech: [B, T]
     """
-    mel_feat = mel_model(speech) # [b d t]
-    mel_feat = mel_feat.transpose(1,2)
+    mel_feat = mel_model(speech)  # [b d t]
+    mel_feat = mel_feat.transpose(1, 2)
 
     import math
+
     MEL_MIN = -4.92
     MEL_VAR = 8.14
     mel_feat = (mel_feat - MEL_MIN) / math.sqrt(MEL_VAR)
 
-    mel_feat = mel_feat.transpose(1,2)
-    return mel_to_wav_vocos(vocos_model, mel_model, mel_feat) # [b,t]
-    
+    mel_feat = mel_feat.transpose(1, 2)
+    return mel_to_wav_vocos(vocos_model, mel_model, mel_feat)  # [b,t]
+
 
 if __name__ == "__main__":
-    vocos_model, mel_model = get_vocos_model_spectrogram(device='cpu')
+    vocos_model, mel_model = get_vocos_model_spectrogram(device="cpu")
 
-    speech = librosa.load("dualcodec/infer/examples/basic/example_wav_en.wav", sr=24000)[0]
+    speech = librosa.load(
+        "dualcodec/infer/examples/basic/example_wav_en.wav", sr=24000
+    )[0]
     speech = torch.tensor(speech).unsqueeze(0)
-    print(speech.shape) # [b,t]
+    print(speech.shape)  # [b,t]
     rec_speech = infer_vocos(vocos_model, mel_model, speech)
     import torchaudio
+
     torchaudio.save("test.wav", rec_speech.cpu(), sample_rate=24000)

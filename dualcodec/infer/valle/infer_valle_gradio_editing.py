@@ -24,6 +24,7 @@ try:
 except ImportError:
     USING_SPACES = False
 
+
 def gpu_decorator(func):
     if USING_SPACES:
         return spaces.GPU(func)
@@ -32,7 +33,12 @@ def gpu_decorator(func):
 
 
 # from dualcodec.model_tts.valle_ar import ValleARInference
-from dualcodec.utils.utils_infer import load_checkpoint, preprocess_ref_audio_text, remove_silence_for_generated_wav, save_spectrogram
+from dualcodec.utils.utils_infer import (
+    load_checkpoint,
+    preprocess_ref_audio_text,
+    remove_silence_for_generated_wav,
+    save_spectrogram,
+)
 
 
 # load models
@@ -41,7 +47,7 @@ def load_dualcodec_valle_12hzv1():
         "model": "valle_ar",
         "ckpt_path": "hf://amphion/dualcodec-tts/dualcodec_valle_ar_12hzv1.safetensors",
         # "ckpt_path": "dualcodec_tts_ckpts/dualcodec_valle_ar_12hzv1.safetensors",
-        "cfg_path": "conf_tts/model/valle_ar/llama_250M.yaml"
+        "cfg_path": "conf_tts/model/valle_ar/llama_250M.yaml",
     }
     model_cfg_path = TTS_MODEL_CFG["cfg_path"]
     # instantiate model
@@ -52,7 +58,9 @@ def load_dualcodec_valle_12hzv1():
     load_checkpoint(model, ckpt_path, use_ema=False)
     return model
 
+
 VALLE_model = load_dualcodec_valle_12hzv1()
+
 
 @gpu_decorator
 def infer(
@@ -72,7 +80,9 @@ def infer(
         gr.Warning("Please enter text to generate.")
         return gr.update(), gr.update(), ref_text
 
-    ref_audio, ref_text = preprocess_ref_audio_text(ref_audio_orig, ref_text, show_info=show_info)
+    ref_audio, ref_text = preprocess_ref_audio_text(
+        ref_audio_orig, ref_text, show_info=show_info
+    )
 
     if model == DEFAULT_TTS_MODEL:
         ema_model = F5TTS_ema_model
@@ -87,7 +97,9 @@ def infer(
         global custom_ema_model, pre_custom_path
         if pre_custom_path != model[1]:
             show_info("Loading Custom TTS model...")
-            custom_ema_model = load_custom(model[1], vocab_path=model[2], model_cfg=model[3])
+            custom_ema_model = load_custom(
+                model[1], vocab_path=model[2], model_cfg=model[3]
+            )
             pre_custom_path = model[1]
         ema_model = custom_ema_model
 
@@ -118,6 +130,7 @@ def infer(
         save_spectrogram(combined_spectrogram, spectrogram_path)
 
     return (final_sample_rate, final_wave), spectrogram_path, ref_text
+
 
 if __name__ == "__main__":
     load_dualcodec_valle_12hzv1()

@@ -18,6 +18,7 @@ from tqdm import tqdm
 import psutil
 import torch.distributed as dist
 
+
 def get_memory_usage():
     """
     Function to get memory usage in GB
@@ -112,17 +113,17 @@ class BaseTrainer(object):
         self.args = args
         self.cfg = cfg
         self.raise_oom = False
-        if hasattr(self.cfg, 'raise_oom'):
+        if hasattr(self.cfg, "raise_oom"):
             self.raise_oom = self.cfg.raise_oom
 
         cfg.exp_name = args.exp_name
 
         # init with accelerate
-        print('initializing accelerator...')
+        print("initializing accelerator...")
         self._init_accelerator()
         self.accelerator.wait_for_everyone()
 
-        self.is_dataset_ready = False # NOTE: requires calling `_build_dataloader` 
+        self.is_dataset_ready = False  # NOTE: requires calling `_build_dataloader`
         # after this __init__
 
         # Use accelerate logger for distributed training
@@ -155,11 +156,13 @@ class BaseTrainer(object):
             self.cfg.train.max_epoch if self.cfg.train.max_epoch > 0 else float("inf")
         )
         self.max_steps = (
-            self.cfg.train.max_steps if hasattr(self.cfg.train, 'max_steps') else float("inf")
+            self.cfg.train.max_steps
+            if hasattr(self.cfg.train, "max_steps")
+            else float("inf")
         )
         if self.max_steps <= 0 or self.max_steps is None:
-            self.max_steps = float('inf')
-        print('max steps:', self.max_steps)
+            self.max_steps = float("inf")
+        print("max steps:", self.max_steps)
         self.logger.info(
             "Max epoch: {}".format(
                 self.max_epoch if self.max_epoch < float("inf") else "Unlimited"
@@ -319,11 +322,15 @@ class BaseTrainer(object):
     ### THIS IS MAIN ENTRY ###
     def train_loop(self):
         r"""Training loop. The public entry of training process."""
-        assert self.is_dataset_ready, 'make sure to call _build_dataloader to prepare the data!'
+        assert (
+            self.is_dataset_ready
+        ), "make sure to call _build_dataloader to prepare the data!"
         # Wait everyone to prepare before we move on
-        print(f'Process {self.accelerator.process_index} beginning to wait for everyone before training...')
+        print(
+            f"Process {self.accelerator.process_index} beginning to wait for everyone before training..."
+        )
         self.accelerator.wait_for_everyone()
-        print(f'Process {self.accelerator.process_index} finished waiting!')
+        print(f"Process {self.accelerator.process_index} finished waiting!")
         # dump config file
         self.model.train()
         self.optimizer.zero_grad()
@@ -333,7 +340,9 @@ class BaseTrainer(object):
             self.logger.info("Epoch {}: ".format(self.epoch))
 
             self._train_epoch()
-            print(f'Process {self.accelerator.process_index} is finishing epoch, max_epoch is {self.max_epoch}')
+            print(
+                f"Process {self.accelerator.process_index} is finishing epoch, max_epoch is {self.max_epoch}"
+            )
             # self._valid_epoch()
 
             # self.accelerator.wait_for_everyone()
@@ -361,6 +370,7 @@ class BaseTrainer(object):
         return self.cfg.train.scheduler.min_lr + coeff * (
             self.cfg.train.adamw.lr - self.cfg.train.scheduler.min_lr
         )
+
     def log(self, *args, **kwargs):
         """
         log every 200 steps
@@ -370,6 +380,7 @@ class BaseTrainer(object):
                 self.accelerator.log(*args, **kwargs)
         except Exception as e:
             print(e)
+
     ### Following are methods that can be used directly in child classes ###
     def _train_epoch(self):
         r"""Training epoch. Should return average loss of a batch (sample) over
@@ -382,9 +393,8 @@ class BaseTrainer(object):
         start_this_step_time = time.time()
         finish_last_step_time = time.time()
 
-        num_finished_samples = 0 # number of sample passes
+        num_finished_samples = 0  # number of sample passes
         trained_data_duration = 0
-
 
         data_iter = iter(self.train_dataloader)
         data_idx = 0
@@ -412,13 +422,19 @@ class BaseTrainer(object):
                 continue
             start_this_step_time = time.time()
             # print(f'load batch took: {start_this_step_time - finish_last_step_time:.6f}s')
-            trained_data_duration += (batch['duration'] / 3600) * self.accelerator.num_processes
-            stats = {"Time/load batch": start_this_step_time - finish_last_step_time,
-                     'Data/duration': trained_data_duration,
-                     'Time/load audio': batch['load_audio_time']}
+            trained_data_duration += (
+                batch["duration"] / 3600
+            ) * self.accelerator.num_processes
+            stats = {
+                "Time/load batch": start_this_step_time - finish_last_step_time,
+                "Data/duration": trained_data_duration,
+                "Time/load audio": batch["load_audio_time"],
+            }
             self.log(stats, step=self.step)
             if stats["Time/load batch"] > 0.6:
-                print(f'{self.accelerator.process_index} load batch time too long, took {stats["Time/load batch"]}s')
+                print(
+                    f'{self.accelerator.process_index} load batch time too long, took {stats["Time/load batch"]}s'
+                )
 
             # update learning rate
             lr = self.get_lr(self.step)
@@ -426,15 +442,17 @@ class BaseTrainer(object):
                 param_group["lr"] = lr
             # Do training step and BP
             if data_idx == 1:
-                print(f'Process {self.accelerator.process_index} is before first step')
+                print(f"Process {self.accelerator.process_index} is before first step")
             with self.accelerator.accumulate(self.model):
                 try:
                     loss = self._train_step(batch)
                     if data_idx == 1:
-                        print(f'Process {self.accelerator.process_index} completed first step')
+                        print(
+                            f"Process {self.accelerator.process_index} completed first step"
+                        )
                 except RuntimeError as e:
-                    if 'out of memory' in str(e) and not self.raise_oom:
-                        print('| WARNING: ran out of memory, passing batch')
+                    if "out of memory" in str(e) and not self.raise_oom:
+                        print("| WARNING: ran out of memory, passing batch")
                         self.optimizer.zero_grad()
                         torch.cuda.empty_cache()
                         continue
@@ -458,12 +476,15 @@ class BaseTrainer(object):
                         else self.current_loss
                     )
                     if torch.isnan(loss):
-                        print(f'Nan loss encountered in step {self.step}!')
+                        print(f"Nan loss encountered in step {self.step}!")
                         self.optimizer.zero_grad()
                         continue
-                    if hasattr(self.cfg, 'ignore_outlier_loss_factor'):
-                        if float(self.cfg.ignore_outlier_loss_factor) * ema_loss < loss and self.step > 5000:
-                            print(f'ignoring outlier loss with value {loss.item()}')
+                    if hasattr(self.cfg, "ignore_outlier_loss_factor"):
+                        if (
+                            float(self.cfg.ignore_outlier_loss_factor) * ema_loss < loss
+                            and self.step > 5000
+                        ):
+                            print(f"ignoring outlier loss with value {loss.item()}")
                             continue
                     self.accelerator.backward(loss)
                     backward_time = time.time()
@@ -483,7 +504,10 @@ class BaseTrainer(object):
             #     print(self.current_loss)
 
             if self.accelerator.sync_gradients:
-                if self.step % self.cfg.train.save_checkpoint_stride[0] == 0 or self.step == self.max_steps:
+                if (
+                    self.step % self.cfg.train.save_checkpoint_stride[0] == 0
+                    or self.step == self.max_steps
+                ):
                     self.accelerator.wait_for_everyone()
                     if self.accelerator.is_main_process:
                         try:
@@ -499,9 +523,13 @@ class BaseTrainer(object):
                         # self.log(get_memory_usage(), step=self.step)
                         self.log(get_gpu_memory_usage(), step=self.step)
                         try:
-                            self.log({
-                                "Step/Epoch": batch['epoch'] + num_finished_samples / len(self.train_dataloader)
-                            }, step=self.step)
+                            self.log(
+                                {
+                                    "Step/Epoch": batch["epoch"]
+                                    + num_finished_samples / len(self.train_dataloader)
+                                },
+                                step=self.step,
+                            )
                         except Exception as e:
                             # print(e)
                             pass
@@ -516,17 +544,18 @@ class BaseTrainer(object):
                 self.step += 1
 
             finish_last_step_time = time.time()
-            stats = {"Time/forward_backward": finish_last_step_time - start_this_step_time,
-                    "Time/process_sync": sync_time - forward_this_step_time,
-                    "Time/backward": backward_time - sync_time,
-                    "Time/optimizer_step": optimizer_step_time - backward_time, 
-                     "Time/forward": forward_this_step_time - start_this_step_time}
+            stats = {
+                "Time/forward_backward": finish_last_step_time - start_this_step_time,
+                "Time/process_sync": sync_time - forward_this_step_time,
+                "Time/backward": backward_time - sync_time,
+                "Time/optimizer_step": optimizer_step_time - backward_time,
+                "Time/forward": forward_this_step_time - start_this_step_time,
+            }
             if self.step % 200 == 0:
                 self.log(stats, step=self.step)
 
             # emptying the CUDA cache after the first step can
             # reduce the chance of OOM
-            
 
     @torch.inference_mode()
     def _valid_epoch(self):
@@ -597,12 +626,14 @@ class BaseTrainer(object):
                 print(e)
             # set epoch and step
             from pathlib import Path
-            
+
             self.epoch = int(Path(checkpoint_path).name.split("_")[0].split("-")[-1])
-            if hasattr(self.args, 'reset_steps') and self.args.reset_steps:
+            if hasattr(self.args, "reset_steps") and self.args.reset_steps:
                 self.step = 0
             else:
-                self.step = int(Path(checkpoint_path).name.split("_")[1].split("-")[-1]) + 1
+                self.step = (
+                    int(Path(checkpoint_path).name.split("_")[1].split("-")[-1]) + 1
+                )
 
         elif resume_type == "finetune":
             # Load only the model weights
@@ -625,7 +656,6 @@ class BaseTrainer(object):
         end = time.monotonic_ns()
         self.is_dataset_ready = True
         self.logger.info(f"Building dataset done in {(end - start) / 1e6:.2f}ms")
-
 
     @staticmethod
     def _set_random_seed(seed):
@@ -657,12 +687,15 @@ class BaseTrainer(object):
             find_unused_parameters=self.cfg.train.find_unused_parameters
         )
         process_group_handler = InitProcessGroupKwargs(
-            timeout=timedelta(seconds=3600*12)
+            timeout=timedelta(seconds=3600 * 12)
         )
-        mixed_precision = 'fp16'
-        if hasattr(self.cfg.train, 'disable_mixed_precision') and self.cfg.train.disable_mixed_precision:
-            print('using fp32...')
-            mixed_precision = 'no'
+        mixed_precision = "fp16"
+        if (
+            hasattr(self.cfg.train, "disable_mixed_precision")
+            and self.cfg.train.disable_mixed_precision
+        ):
+            print("using fp32...")
+            mixed_precision = "no"
         self.accelerator = accelerate.Accelerator(
             gradient_accumulation_steps=self.cfg.train.gradient_accumulation_step,
             log_with=self.cfg.train.tracker,

@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from einops import rearrange
+
 try:
     from torch.nn.utils import weight_norm
 except:
@@ -102,6 +103,7 @@ class VectorQuantize(nn.Module):
         z_q = self.decode_code(indices)
         return z_q, indices
 
+
 # class SplitResidualVectorQuantize(nn.Module):
 #     def __init__(
 #         self,
@@ -127,7 +129,7 @@ class VectorQuantize(nn.Module):
 #             codebook_dim=codebook_dim,
 #             quantizer_dropout=quantizer_dropout
 #         )
-    
+
 
 class ResidualVectorQuantize(nn.Module):
     """
@@ -217,7 +219,7 @@ class ResidualVectorQuantize(nn.Module):
             )
 
             if i == 0:
-                z_q_1 = z_q_i.clone()   # latent after first quantization
+                z_q_1 = z_q_i.clone()  # latent after first quantization
 
             # Create mask to apply quantizer dropout
             mask = (

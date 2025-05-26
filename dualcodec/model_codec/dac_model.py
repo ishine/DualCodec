@@ -23,10 +23,13 @@ from easydict import EasyDict as edict
 import torch.nn.functional as F
 from .cnn import ConvNeXtBlock
 
+
 def init_weights(m):
     if isinstance(m, nn.Conv1d):
         nn.init.trunc_normal_(m.weight, std=0.02)
         nn.init.constant_(m.bias, 0)
+
+
 def pad_to_length(x, length, pad_value=0):
     # Get the current size along the last dimension
     current_length = x.shape[-1]
@@ -41,6 +44,7 @@ def pad_to_length(x, length, pad_value=0):
         x_padded = x[..., :length]
 
     return x_padded
+
 
 class ResidualUnit(nn.Module):
     def __init__(self, dim: int = 16, dilation: int = 1):
@@ -221,18 +225,25 @@ class DAC(BaseModel):
         self.distill = distill
         if self.distill:
             self.distill_projection = WNConv1d(
-                latent_dim, distill_projection_out_dim, kernel_size=1,
+                latent_dim,
+                distill_projection_out_dim,
+                kernel_size=1,
             )
             if convnext:
                 self.convnext = nn.Sequential(
-                    *[ConvNeXtBlock(
-                        dim=distill_projection_out_dim,
-                        intermediate_dim=2048,
-                        is_causal=is_causal,
-                    ) for _ in range(5)],  # Unpack the list directly into nn.Sequential
+                    *[
+                        ConvNeXtBlock(
+                            dim=distill_projection_out_dim,
+                            intermediate_dim=2048,
+                            is_causal=is_causal,
+                        )
+                        for _ in range(5)
+                    ],  # Unpack the list directly into nn.Sequential
                     WNConv1d(
-                        distill_projection_out_dim, 1024, kernel_size=1,
-                    )
+                        distill_projection_out_dim,
+                        1024,
+                        kernel_size=1,
+                    ),
                 )
             else:
                 self.convnext = nn.Identity()
@@ -253,7 +264,7 @@ class DAC(BaseModel):
         audio_data: torch.Tensor,
         sample_rate=24000,
         n_quantizers: int = None,
-        subtracted_latent = None,
+        subtracted_latent=None,
     ):
         """Encode given audio data and return quantized latent codes
 
@@ -289,9 +300,13 @@ class DAC(BaseModel):
         z = self.encoder(audio_data)
         if subtracted_latent is not None:
             assert np.abs(z.shape[-1] - subtracted_latent.shape[-1]) <= 2
-            z = z[..., :subtracted_latent.shape[-1]] - subtracted_latent
-        z, codes, latents, commitment_loss, codebook_loss, first_layer_quantized = self.quantizer(
-            z, n_quantizers, possibly_no_quantizer=False,
+            z = z[..., : subtracted_latent.shape[-1]] - subtracted_latent
+        z, codes, latents, commitment_loss, codebook_loss, first_layer_quantized = (
+            self.quantizer(
+                z,
+                n_quantizers,
+                possibly_no_quantizer=False,
+            )
         )
         if subtracted_latent is not None:
             z = z + subtracted_latent
@@ -304,7 +319,7 @@ class DAC(BaseModel):
             z = self.quantizer.from_codes(acoustic_codes)[0]
         z = z + semantic_latent
 
-        z = self.decoder(z) # audio
+        z = self.decoder(z)  # audio
         return z
 
     def forward(
@@ -312,7 +327,7 @@ class DAC(BaseModel):
         audio_data: torch.Tensor,
         sample_rate: int = None,
         n_quantizers: int = None,
-        subtracted_latent = None,
+        subtracted_latent=None,
         bypass_quantize=False,
         possibly_no_quantizer=False,
     ):
@@ -355,14 +370,23 @@ class DAC(BaseModel):
         z = self.encoder(audio_data)
         if subtracted_latent is not None:
             assert (z.shape[-1] - subtracted_latent.shape[-1]) <= 2
-            z = z[..., :subtracted_latent.shape[-1]] - subtracted_latent
+            z = z[..., : subtracted_latent.shape[-1]] - subtracted_latent
         if bypass_quantize:
-            codes, latents, commitment_loss, codebook_loss, first_layer_quantized = \
-                None, None, 0.0, 0.0, None
+            codes, latents, commitment_loss, codebook_loss, first_layer_quantized = (
+                None,
+                None,
+                0.0,
+                0.0,
+                None,
+            )
             z = 0.0
         else:
-            z, codes, latents, commitment_loss, codebook_loss, first_layer_quantized = self.quantizer(
-                z, n_quantizers, possibly_no_quantizer=possibly_no_quantizer,
+            z, codes, latents, commitment_loss, codebook_loss, first_layer_quantized = (
+                self.quantizer(
+                    z,
+                    n_quantizers,
+                    possibly_no_quantizer=possibly_no_quantizer,
+                )
             )
         if subtracted_latent is not None:
             z = z + subtracted_latent
@@ -374,18 +398,19 @@ class DAC(BaseModel):
         if self.distill:
             first_layer_quantized = self.distill_projection(first_layer_quantized)
             first_layer_quantized = self.convnext(first_layer_quantized)
-            
-        
-        return edict({
-            "x": x,
-            "z": z,
-            "codes": codes,
-            "latents": latents,
-            "penalty": commitment_loss,
-            "vq/codebook_loss": codebook_loss,
-            "metrics": {},
-            "first_layer_quantized": first_layer_quantized,
-        })
+
+        return edict(
+            {
+                "x": x,
+                "z": z,
+                "codes": codes,
+                "latents": latents,
+                "penalty": commitment_loss,
+                "vq/codebook_loss": codebook_loss,
+                "metrics": {},
+                "first_layer_quantized": first_layer_quantized,
+            }
+        )
 
 
 if __name__ == "__main__":

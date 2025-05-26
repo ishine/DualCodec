@@ -10,13 +10,20 @@ from easydict import EasyDict as edict
 from contextlib import nullcontext
 import warnings
 
-def _build_semantic_model(dualcodec_path, meanvar_fname="w2vbert2_mean_var_stats_emilia.pt", semantic_model_path="facebook/w2v-bert-2.0", device="cuda", **kwargs):
+
+def _build_semantic_model(
+    dualcodec_path,
+    meanvar_fname="w2vbert2_mean_var_stats_emilia.pt",
+    semantic_model_path="facebook/w2v-bert-2.0",
+    device="cuda",
+    **kwargs,
+):
     """Build the w2v semantic model and load pretrained weights.
-    Inputs: 
+    Inputs:
     - dualcodec_path: str, path to the dualcodec model
     - meanvar_fname: str, filename of the mean and variance statistics
     - semantic_model_path: str, path to the semantic model, or a huggngface model name
-    Outputs: 
+    Outputs:
     cfg: edict, containing the semantic model, mean, std, and feature extractor.
     - model: Wav2Vec2BertModel instance for semantic feature extraction
     - layer_idx: int (15), index of the layer to extract features from
@@ -37,7 +44,10 @@ def _build_semantic_model(dualcodec_path, meanvar_fname="w2vbert2_mean_var_stats
 
     # load feature extractor
     from transformers import SeamlessM4TFeatureExtractor
-    w2v_feat_extractor = SeamlessM4TFeatureExtractor.from_pretrained(semantic_model_path)
+
+    w2v_feat_extractor = SeamlessM4TFeatureExtractor.from_pretrained(
+        semantic_model_path
+    )
 
     layer_idx = 15
     output_idx = layer_idx + 2
@@ -50,21 +60,34 @@ def _build_semantic_model(dualcodec_path, meanvar_fname="w2vbert2_mean_var_stats
     semantic_mean = semantic_mean
     semantic_std = semantic_std
 
-    return edict({
-        "semantic_model": semantic_model,
-        "layer_idx": layer_idx,
-        "output_idx": output_idx,
-        "mean": semantic_mean,
-        "std": semantic_std,
-        "feature_extractor": w2v_feat_extractor,
-    })
+    return edict(
+        {
+            "semantic_model": semantic_model,
+            "layer_idx": layer_idx,
+            "output_idx": output_idx,
+            "mean": semantic_mean,
+            "std": semantic_std,
+            "feature_extractor": w2v_feat_extractor,
+        }
+    )
+
+
 from cached_path import cached_path
+
+
 class Inference:
     """
     Inference class for DualCodec.
     """
+
     def __init__(
-        self, dualcodec_model, dualcodec_path="hf://amphion/dualcodec", w2v_path="hf://facebook/w2v-bert-2.0", device="cuda", autocast=True, **kwargs
+        self,
+        dualcodec_model,
+        dualcodec_path="hf://amphion/dualcodec",
+        w2v_path="hf://facebook/w2v-bert-2.0",
+        device="cuda",
+        autocast=True,
+        **kwargs,
     ) -> None:
         """
         Inputs:
@@ -132,9 +155,13 @@ class Inference:
         with torch.autocast(device_type=self.device, dtype=torch.float16):
             feat = self._extract_semantic_code(
                 input_features, attention_mask
-            ).transpose(1,2)
+            ).transpose(1, 2)
 
-            feat = torch.nn.functional.avg_pool1d(feat, self.model.semantic_downsample_factor, self.model.semantic_downsample_factor)
+            feat = torch.nn.functional.avg_pool1d(
+                feat,
+                self.model.semantic_downsample_factor,
+                self.model.semantic_downsample_factor,
+            )
 
         if self.autocast:
             ctx = torch.autocast(device_type=self.device, dtype=torch.float16)
@@ -142,10 +169,12 @@ class Inference:
             ctx = nullcontext()
 
         with ctx:
-            semantic_codes, acoustic_codes = self.model.encode(audio, num_quantizers=n_quantizers, semantic_repr=feat)
-        
+            semantic_codes, acoustic_codes = self.model.encode(
+                audio, num_quantizers=n_quantizers, semantic_repr=feat
+            )
+
         return semantic_codes, acoustic_codes
-    
+
     def decode_from_codes(
         self,
         semantic_codes,
@@ -158,7 +187,9 @@ class Inference:
         Returns:
         - audio: torch.Tensor, shape=(B, 1, T), dtype=torch.float32, output audio waveform
         """
-        audio = self.model.decode_from_codes(semantic_codes, acoustic_codes).to(torch.float32)
+        audio = self.model.decode_from_codes(semantic_codes, acoustic_codes).to(
+            torch.float32
+        )
         return audio
 
     @torch.no_grad()
@@ -170,7 +201,9 @@ class Inference:
         Returns:
         - audio: torch.Tensor, shape=(B, 1, T), dtype=torch.float32, output audio waveform
         """
-        audio = self.model.decode_from_codes(semantic_codes, acoustic_codes).to(torch.float32)
+        audio = self.model.decode_from_codes(semantic_codes, acoustic_codes).to(
+            torch.float32
+        )
         return audio
 
     @torch.no_grad()
@@ -196,17 +229,17 @@ class Inference:
         ):  # skip normalization
             pass
         else:
-            feat = (feat - self.semantic_cfg["mean"]) / self.semantic_cfg[
-                "std"
-            ]
+            feat = (feat - self.semantic_cfg["mean"]) / self.semantic_cfg["std"]
         return feat
+
 
 @torch.no_grad()
 def infer(audio, model=None, num_quantizers=8):
-    audio = audio.reshape(1,1,-1).cpu()
+    audio = audio.reshape(1, 1, -1).cpu()
     out, codes = model.inference(audio, n_quantizers=num_quantizers)
     out = pad_to_length(out, audio.shape[-1])
     return out, codes
+
 
 def pad_to_length(x, length, pad_value=0):
     # Get the current size along the last dimension

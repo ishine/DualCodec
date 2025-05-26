@@ -6,8 +6,10 @@
 import re
 import inflect
 from .global_punct import normalize_punctuation
+
 # List of known special names
 special_names = {"NASA", "UNESCO", "FBI", "USA", "AI"}
+
 
 def expand_numbers(text):
     """F"""
@@ -18,41 +20,47 @@ def expand_numbers(text):
 
     return re.sub(r"\b\d+\b", replace_number, text)
 
+
 import re
+
 
 def preserve_special_names(text):
     """F"""
     # Detect uppercase acronyms with two or more letters
-    pattern = r'\b[A-Z]{2,}\b'
-    
+    pattern = r"\b[A-Z]{2,}\b"
+
     # Replace true acronyms by splitting them into individual uppercase letters
     def replace_special(match):
         word = match.group(0)
-        return ' '.join(word)  # Split acronyms into individual letters
+        return " ".join(word)  # Split acronyms into individual letters
 
     # Expand acronyms in the text
     text_with_expanded_acronyms = re.sub(pattern, replace_special, text)
-    
+
     # Lowercase all other words except already-expanded acronyms
     def lowercase_except_acronyms(match):
         """F"""
         word = match.group(0)
         # Keep expanded acronyms in uppercase
-        if all(c.isupper() or c == ' ' for c in word):
+        if all(c.isupper() or c == " " for c in word):
             return word
         else:
             return word.lower()
 
     # Match words including those with apostrophes
-    normalized_text = re.sub(r"\b[\w']+\b", lowercase_except_acronyms, text_with_expanded_acronyms)
-    
+    normalized_text = re.sub(
+        r"\b[\w']+\b", lowercase_except_acronyms, text_with_expanded_acronyms
+    )
+
     return normalized_text
+
+
 def normalize_en(text):
     """F"""
     # Lowercase the entire text
     # text = text.lower()
     text = preserve_special_names(text)
-    
+
     # Isolate punctuation
     text = normalize_punctuation(text)
 
@@ -67,15 +75,14 @@ def normalize_en(text):
 
     text = text.replace("'", "^")
     # text = text.replace('"', "")
-    text = text.replace(';', ",")
-    text = text.replace(':', ",")
+    text = text.replace(";", ",")
+    text = text.replace(":", ",")
 
     # avoid single quote (too rare in data)
     # text = text.replace(" '", ' "')
     # text = text.replace(",'", ', "')
     # text = text.replace("',", '",')
     # text = text.replace("' ,", '",')
-
 
     return text
 

@@ -8,7 +8,15 @@ import torch
 
 class Inference:
     def __init__(
-        self, model, ckpt_path, cfg, device="cuda", normalize=False, half=False, split_paragraph=True, **kwargs
+        self,
+        model,
+        ckpt_path,
+        cfg,
+        device="cuda",
+        normalize=False,
+        half=False,
+        split_paragraph=True,
+        **kwargs,
     ) -> None:
         self.model = model
         import safetensors.torch
@@ -34,10 +42,10 @@ class Inference:
             print("skip semantic normalize")
 
         self.model = self.model.half()
-        torch._C._jit_set_fusion_strategy([('STATIC', 1)])
+        torch._C._jit_set_fusion_strategy([("STATIC", 1)])
         torch._C._jit_set_profiling_mode(False)
         torch._C._jit_set_profiling_executor(False)
-        
+
         # self.model.llm = torch.compile(self.model.llm.forward_chunk, dynamic=True)
         # self.model.text_encoder.forward = torch.compile(self.model.text_encoder.forward, dynamic=True)
         # self.model.fast_llm = torch.compile(self.model.fast_llm, dynamic=False)
@@ -54,7 +62,7 @@ class Inference:
         top_k=1000,
         top_p=0.85,
         repeat_penalty=1.1,
-        return_prompt=False
+        return_prompt=False,
     ):
         """
             Generate text given speech and text prompts.
@@ -114,10 +122,10 @@ class Inference:
             "text_token_len": prompt_text_len,
             "top_k": top_k,
             "top_p": top_p,
-            'repeat_penalty': repeat_penalty,
-            'temperature': temp,
+            "repeat_penalty": repeat_penalty,
+            "temperature": temp,
         }
-        result = self._inference_batch(batch,return_prompt=return_prompt)
+        result = self._inference_batch(batch, return_prompt=return_prompt)
         # return_values_0.append(result[0])
         # print(result[0][-1])
         # if prompt_language == 'en':
@@ -162,13 +170,19 @@ class Inference:
                 "std"
             ]
 
-        if hasattr(self.cfg, 'use_our_codec'):
+        if hasattr(self.cfg, "use_our_codec"):
             # mean pool to 25hz
-            feat = torch.nn.functional.avg_pool1d(feat.transpose(1,2), self.cfg.semantic_model['repcodec_model'].semantic_downsample_factor, self.cfg.semantic_model['repcodec_model'].semantic_downsample_factor)
+            feat = torch.nn.functional.avg_pool1d(
+                feat.transpose(1, 2),
+                self.cfg.semantic_model["repcodec_model"].semantic_downsample_factor,
+                self.cfg.semantic_model["repcodec_model"].semantic_downsample_factor,
+            )
             # if feat.shape[-1] % 2 != 0:
             #     feat = feat[..., 1:]
 
-            semantic_code = self.cfg.semantic_model["repcodec_model"].semantic_quantize(feat)
+            semantic_code = self.cfg.semantic_model["repcodec_model"].semantic_quantize(
+                feat
+            )
         else:
             semantic_code, _ = self.cfg.semantic_model["repcodec_model"].quantize(
                 feat
@@ -215,11 +229,11 @@ class Inference:
             prompt_speech_token=semantic_code,
             prompt_speech_token_len=torch.tensor([semantic_code.shape[-1]]),
             top_k=batch["top_k"],
-            top_p=batch['top_p'],
-            repeat_penalty=batch['repeat_penalty'],
-            temperature=batch['temperature'],
+            top_p=batch["top_p"],
+            repeat_penalty=batch["repeat_penalty"],
+            temperature=batch["temperature"],
         )
         if return_prompt:
             return out, ret_semantic_code
         else:
-            return out #, ret_semantic_code
+            return out  # , ret_semantic_code

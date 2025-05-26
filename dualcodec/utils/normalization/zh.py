@@ -5,7 +5,9 @@
 import re
 import cn2an
 from .global_punct import normalize_punctuation
+
 # from .text_normalization.cn_tn import TextNorm
+
 
 def number_to_chinese(text):
     """
@@ -25,12 +27,13 @@ def remove_punct(text):
         text (str): Text to be cleaned
     """
     text = re.sub(
-         r"[^，。？！《》‘’“”：；（）【】「」『』~〜～—ー、\u4e00-\u9fff\s_,\-\.\?!;:\"\'…\w()\u3040-\u309F\u30A0-\u30FF]",
+        r"[^，。？！《》‘’“”：；（）【】「」『』~〜～—ー、\u4e00-\u9fff\s_,\-\.\?!;:\"\'…\w()\u3040-\u309F\u30A0-\u30FF]",
         "",
         text,
     )
     # text = re.sub(r"\s*([,\.\?!;:\'…])\s*", r"\1", text)
     return text
+
 
 def normalize_zh(text, en_punct=False, number_to_chinese=True):
     """

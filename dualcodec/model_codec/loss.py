@@ -235,7 +235,6 @@ class MultiScaleSTFTLoss(nn.Module):
         return loss
 
 
-
 class MelSpectrogramLoss(nn.Module):
     """Compute distance between mel spectrograms. Can be used
     in a multi-scale way.
@@ -398,10 +397,11 @@ class GANLoss(nn.Module):
         for i in range(len(d_fake)):
             for j in range(len(d_fake[i]) - 1):
                 loss_feature += F.l1_loss(d_fake[i][j], d_real[i][j].detach())
-        
+
         loss_g = loss_g / len(d_fake)
         loss_feature = loss_feature / len(d_fake)
         return loss_g, loss_feature
+
 
 class MultibandMelSpectrogramLoss(MelSpectrogramLoss):
     def __init__(self, bands=[(0.0, 0.1)], band_weights=None, **kwargs):
@@ -415,10 +415,14 @@ class MultibandMelSpectrogramLoss(MelSpectrogramLoss):
         """
         super().__init__(**kwargs)
         self.bands = bands
-        self.band_weights = band_weights if band_weights is not None else [1.0] * len(bands)
-        
+        self.band_weights = (
+            band_weights if band_weights is not None else [1.0] * len(bands)
+        )
+
         # Ensure weights match the number of bands
-        assert len(self.band_weights) == len(self.bands), "band_weights must match the number of bands."
+        assert len(self.band_weights) == len(
+            self.bands
+        ), "band_weights must match the number of bands."
 
     def forward(self, x: AudioSignal, y: AudioSignal):
         """Computes mel loss between an estimate and a reference signal across multiple frequency bands.
@@ -436,7 +440,9 @@ class MultibandMelSpectrogramLoss(MelSpectrogramLoss):
             Multiband mel loss.
         """
         loss = 0.0
-        for n_mels, fmin, fmax, s in zip(self.n_mels, self.mel_fmin, self.mel_fmax, self.stft_params):
+        for n_mels, fmin, fmax, s in zip(
+            self.n_mels, self.mel_fmin, self.mel_fmax, self.stft_params
+        ):
             kwargs = {
                 "window_length": s.window_length,
                 "hop_length": s.hop_length,

@@ -12,13 +12,11 @@ import hydra
 
 
 def train(cfg):
-    if hasattr(cfg.trainer, 'trainer'):
+    if hasattr(cfg.trainer, "trainer"):
         trainer = hydra.utils.instantiate(cfg.trainer.trainer)
     else:
         trainer = hydra.utils.instantiate(cfg.trainer)
-    trainer._build_dataloader(
-        hydra.utils.instantiate(cfg.data.dataloader)
-    )
+    trainer._build_dataloader(hydra.utils.instantiate(cfg.data.dataloader))
     trainer.train_loop()
 
 
@@ -27,7 +25,7 @@ def train(cfg):
     config_path="./dualcodec/conf",
     config_name="dualcodec_train.yaml",
 )
-def main(cfg: DictConfig) -> Optional[float]:    
+def main(cfg: DictConfig) -> Optional[float]:
     # train the model
     train(cfg)
 

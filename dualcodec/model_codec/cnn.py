@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class ConvNeXtBlock(nn.Module):
     """ConvNeXt Block adapted from https://github.com/facebookresearch/ConvNeXt to 1D audio signal.
 
@@ -82,7 +83,7 @@ class ConvNeXtBlock(nn.Module):
         """
         residual = x
         if self.is_causal:
-            x = torch.nn.functional.pad(x, (6,0))
+            x = torch.nn.functional.pad(x, (6, 0))
         x = self.dwconv(x)
         x = x.transpose(1, 2)  # (B, C, T) -> (B, T, C)
         if self.adanorm:
@@ -145,4 +146,3 @@ class AdaLayerNorm(nn.Module):
         x = nn.functional.layer_norm(x, (self.dim,), eps=self.eps)
         x = x * scale + shift
         return x
-

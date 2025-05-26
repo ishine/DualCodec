@@ -85,14 +85,16 @@ class DistributedSampler:
             self.rank = dist.get_rank()
             self.world_size = dist.get_world_size()
         else:
-            print('WARNING: distributed not initialized in DistributedSampler! \
+            print(
+                "WARNING: distributed not initialized in DistributedSampler! \
                   Defaulting to single rank. \
-                  Or set `manual_dist_sampler` to True in `gluster_opener`.')
+                  Or set `manual_dist_sampler` to True in `gluster_opener`."
+            )
             self.rank = 0
             self.world_size = 1
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is None:
-            print('no dataloader worker info!')
+            print("no dataloader worker info!")
             self.worker_id = 0
             self.num_workers = 1
         else:
@@ -138,7 +140,7 @@ class DistributedSampler:
             data = data[: self.num_workers]
         data = data[self.worker_id :: self.num_workers]
         print("data idx: ", data[:10])
-        print('data length:', len(data))
+        print("data length:", len(data))
 
         return data
 
@@ -162,7 +164,6 @@ class DataList(IterableDataset):
             self.indexes = self.sampler.sample(self.lists)
         else:
             pass
-
 
     def set_epoch(self, epoch):
         """
@@ -243,5 +244,3 @@ def prepare_gluster_dataset(data_list: DataList, data_pipeline: list, mode="trai
     for func in data_pipeline:
         data_list = Processor(data_list, func, mode=mode)
     return data_list
-
-
