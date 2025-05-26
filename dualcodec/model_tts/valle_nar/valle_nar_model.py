@@ -753,10 +753,14 @@ class ValleNAR(nn.Module):
         B, T = first_stage_ids.shape  # Get shape
         padding_value = 1  # Choose a value in range [0, 4096] as padding value
         # Construct padding tensor for last 7 layers
-        padded_tensor = torch.full((7, B, T), padding_value, device=first_stage_ids.device)
+        padded_tensor = torch.full(
+            (7, B, T), padding_value, device=first_stage_ids.device
+        )
         # Expand first_stage_ids to target tensor and concatenate
         first_stage_ids = first_stage_ids.unsqueeze(0)
-        target_ids = torch.cat([prompt_ids, padded_tensor], dim=-1)  # Concatenate along last dimension
+        target_ids = torch.cat(
+            [prompt_ids, padded_tensor], dim=-1
+        )  # Concatenate along last dimension
 
         target_mask = torch.ones_like(target_ids[0], dtype=torch.long)
 

@@ -88,7 +88,7 @@ def split_paragraph(
     :param comma_split:
     :return:
     """
-    
+
     def calc_utt_length(_text: str):
         """
         :param _text:
@@ -110,7 +110,13 @@ def split_paragraph(
             return len(tokenize(_text)) < merge_len
 
     if lang == "zh":
-        pounc = ["。", "？", "！", "；", "：", "、", ".", "?", "!", ";"] + [".", "?", "!", ";", ":"]
+        pounc = ["。", "？", "！", "；", "：", "、", ".", "?", "!", ";"] + [
+            ".",
+            "?",
+            "!",
+            ";",
+            ":",
+        ]
     else:
         pounc = [".", "?", "!", ";", ":"]
     if comma_split:
@@ -128,7 +134,7 @@ def split_paragraph(
             else:
                 st = i + 1
     if st != len(text):
-        utts.append(text[st:] + '.')
+        utts.append(text[st:] + ".")
     if len(utts) == 0:
         if lang == "zh":
             utts.append(text + "。")

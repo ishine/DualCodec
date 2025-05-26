@@ -4,6 +4,8 @@
 # LICENSE file in the root directory of this source tree.
 
 from dualcodec.infer.valle.utils_valle_infer import *
+
+
 def load_flattened_ar_model():
     TTS_MODEL_CFG = {
         "model": "flattened_ar",
@@ -27,9 +29,11 @@ def load_flattened_ar_model():
     )
     return model
 
+
 def get_flattened_ar_inference_obj(flattened_ar_model, dualcodec_inference_obj, device):
     from dualcodec.infer.flattened_ar.inference_flattened import Inference
     from dualcodec.utils.utils import get_whisper_tokenizer
+
     return Inference(
         model=flattened_ar_model,
         tokenizer_obj=get_whisper_tokenizer(),
