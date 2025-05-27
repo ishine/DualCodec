@@ -144,10 +144,6 @@ output_file = args.output_file or config.get(
 save_chunk = args.save_chunk or config.get("save_chunk", False)
 remove_silence = args.remove_silence or config.get("remove_silence", False)
 
-cross_fade_duration = args.cross_fade_duration or config.get(
-    "cross_fade_duration", cross_fade_duration
-)
-
 # ignore gen_text if gen_file provided
 
 if gen_file:
@@ -222,7 +218,6 @@ def main():
             ref_text=ref_text_,
             gen_text=gen_text_,
             target_rms=target_rms,
-            cross_fade_duration=cross_fade_duration,
             streaming=False,
             top_k=15,
             top_p=0.85,

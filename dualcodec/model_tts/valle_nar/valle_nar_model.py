@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Amphion.
+# Copyright (c) 2023 Amphion.
 #
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
@@ -13,7 +13,7 @@ from typing import List, Optional, Tuple, Union
 
 from .modeling_llama import LlamaDecoderLayer
 
-NUM_QUANTIZERS = 8  # number of quantizers in total, currently assumes first layer AR.
+NUM_QUANTIZERS = 8 # number of quantizers in total, currently assumes first layer AR.
 START_QUANTIZATION_LAYER = 1  # start quantization layer
 END_QUANTIZATION_LAYER = 7  # end quantization layer
 
@@ -118,26 +118,21 @@ from transformers.models.llama.modeling_llama import BaseModelOutputWithPast
 class MultiEmbedding(nn.Module):
     def __init__(
         self,
-        first_layer_num_embeddings=16384,  # Add new parameter
+        first_layer_num_embeddings=16384, 
         num_embeddings=1034,
         embedding_dim=1024,
         num_quantization_layers=NUM_QUANTIZERS,
     ):
         super().__init__()
-        # First layer uses different vocab size
-        self.embeddings = nn.ModuleList(
-            [nn.Embedding(first_layer_num_embeddings, embedding_dim)]
-        )
+        self.embeddings = nn.ModuleList([
+            nn.Embedding(first_layer_num_embeddings, embedding_dim)
+        ])
+        
+        self.embeddings.extend([
+            nn.Embedding(num_embeddings, embedding_dim)
+            for _ in range(num_quantization_layers - 1)
+        ])
 
-        # Other layers use original vocab size
-        self.embeddings.extend(
-            [
-                nn.Embedding(num_embeddings, embedding_dim)
-                for _ in range(num_quantization_layers - 1)
-            ]
-        )
-
-        # Initialize embeddings
         for i in range(num_quantization_layers):
             self.embeddings[i].weight.data.normal_(mean=0.0, std=0.02)
         self._is_hf_initialized = True
@@ -371,7 +366,6 @@ class LlammaNARModel(LlamaModel):
 
 
 from transformers.models.llama.modeling_llama import LlamaPreTrainedModel
-
 # from transformers.models.llama.modeling_llama import CrossEntropyLoss
 from torch.nn import CrossEntropyLoss
 from easydict import EasyDict as edict
@@ -458,7 +452,7 @@ class ValleNAR(nn.Module):
     def __init__(
         self,
         phone_vocab_size=51866,
-        first_layer_vocab_size=16384,  # 4 * target_vocab_size
+        first_layer_vocab_size=16384, # 4 * target_vocab_size
         target_vocab_size=4096,
         hidden_size=1024,
         intermediate_size=4096,
@@ -557,9 +551,7 @@ class ValleNAR(nn.Module):
         )  # [B, T, H]
 
         if prompt_len is not None:
-            assert (
-                not self.training
-            )  # vscode-remote://icoding%2B615692.icoding.baidu-int.com/ssd2/lijiaqi18/AmphionVALLEv2-main/models/tts/valle_v2/valle_inference.pynce stage fix prompt len to input
+            assert not self.training  # vscode-remote://icoding%2B615692.icoding.baidu-int.com/ssd2/lijiaqi18/AmphionVALLEv2-main/models/tts/valle_v2/valle_inference.pynce stage fix prompt len to input
             NUM_PROMPT_TOKENS = prompt_len
         else:
             assert self.training
@@ -728,7 +720,7 @@ class ValleNAR(nn.Module):
             phone_ids
         )  # loss for entire phone is not computed (passed to llama)
         return phone_ids, phone_mask, phone_label
-
+    
     @torch.no_grad()
     def sample_hf(
         self,
@@ -750,17 +742,14 @@ class ValleNAR(nn.Module):
         """
         phone_mask = torch.ones_like(phone_ids, dtype=torch.long)
         assert prompt_ids.shape[-1] >= 5, "prompt_ids should have at least 5 tokens"
-        B, T = first_stage_ids.shape  # Get shape
-        padding_value = 1  # Choose a value in range [0, 4096] as padding value
-        # Construct padding tensor for last 7 layers
-        padded_tensor = torch.full(
-            (7, B, T), padding_value, device=first_stage_ids.device
-        )
-        # Expand first_stage_ids to target tensor and concatenate
-        first_stage_ids = first_stage_ids.unsqueeze(0)
-        target_ids = torch.cat(
-            [prompt_ids, padded_tensor], dim=-1
-        )  # Concatenate along last dimension
+        B, T = first_stage_ids.shape  # 获取形状
+        padding_value = 1  # 在范围 [0, 4096] 内选择一个值作为填充值
+        # 构造最后 7 层的填充值张量
+        padding_tensor = torch.full((7, B, T), fill_value=padding_value, dtype=first_stage_ids.dtype, device=first_stage_ids.device)
+        # 将 first_stage_ids 扩展为目标张量，并拼接
+        padded_tensor = torch.cat([first_stage_ids.unsqueeze(0), padding_tensor], dim=0)  # [7+1, B, T]
+
+        target_ids = torch.cat([prompt_ids, padded_tensor], dim=-1)  # 拼接到最后一维
 
         target_mask = torch.ones_like(target_ids[0], dtype=torch.long)
 
