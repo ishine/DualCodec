@@ -4,7 +4,7 @@ version = "0.3.7"
 description = "The DualCodec neural audio codec."
 dependencies = [
     "transformers>=4.30.0",
-    "descript-audio-codec",
+    "descript-audiotools>=0.7.2",
     "huggingface_hub[cli]",
     "easydict",
     "torch",
