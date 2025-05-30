@@ -551,7 +551,7 @@ class ValleNAR(nn.Module):
         )  # [B, T, H]
 
         if prompt_len is not None:
-            assert not self.training  # vscode-remote://icoding%2B615692.icoding.baidu-int.com/ssd2/lijiaqi18/AmphionVALLEv2-main/models/tts/valle_v2/valle_inference.pynce stage fix prompt len to input
+            assert not self.training
             NUM_PROMPT_TOKENS = prompt_len
         else:
             assert self.training

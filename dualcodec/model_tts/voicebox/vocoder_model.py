@@ -913,7 +913,6 @@ def get_vocos_model_spectrogram(
         hop_size=480,
         padding="same",
     )
-    # vocoder_path = '/gluster-ssd-tts/jiaqi_repos/vocos_emilia_singnet3k.safetensors'
     import safetensors.torch
 
     ckpt = safetensors.torch.load_file(vocoder_path)
