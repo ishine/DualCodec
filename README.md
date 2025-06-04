@@ -1,5 +1,3 @@
-
-
 # DualCodec: A Low-Frame-Rate, Semantically-Enhanced Neural Audio Codec for Speech Generation
 
 [![arXiv](https://img.shields.io/badge/arXiv-2505.13000-brightgreen.svg?style=flat-square)](http://arxiv.org/abs/2505.13000)
@@ -194,7 +192,10 @@ data.segment_speech.segment_length=24000
 
 ```
 
+Below are example training loss curves for a DualCodec 25hz model:
 
+![Training Loss Curve 1](losscurve1.png)
+![Training Loss Curve 2](losscurve2.png)
 
 ## Finetuning DualCodec
 1. Install other necessary components for training:
