@@ -188,8 +188,15 @@ class Trainer(BaseTrainer):
         generator_out = out_dict.x
         commitment_loss = out_dict.penalty
         metrics = out_dict.metrics
-        codebook_loss = out_dict["vq/codebook_loss"]
-        first_layer_quantized = out_dict["first_layer_quantized"]
+        if hasattr(out_dict, 'vq/codebook_loss'):
+            codebook_loss = out_dict['vq/codebook_loss']
+        else:
+            codebook_loss = 0.0
+        if hasattr(out_dict, 'first_layer_quantized'):
+            first_layer_quantized = out_dict['first_layer_quantized']
+        else:
+            first_layer_quantized = None
+
 
         # --------- Discriminator training ------------
         if USE_HINGE_LOSS:
