@@ -141,14 +141,29 @@ class Inference:
         audio_16k = torchaudio.functional.resample(audio, 24000, 16000)
 
         feature_extractor = self.semantic_cfg.feature_extractor
-        inputs = feature_extractor(
-            audio_16k.cpu(), sampling_rate=16000, return_tensors="pt"
-        )
-        input_features = inputs["input_features"][0]
-        attention_mask = inputs["attention_mask"][0]
 
-        input_features = input_features.unsqueeze(0).to(self.device)
-        attention_mask = attention_mask.unsqueeze(0).to(self.device)
+        if audio.shape[0] > 1:
+            input_features_list = []
+            attention_mask_list = []
+            for i in range(audio.shape[0]):
+                inputs = feature_extractor(
+                    audio_16k[i].cpu(), sampling_rate=16000, return_tensors="pt"
+                )
+                input_features_list.append(inputs["input_features"][0])
+                attention_mask_list.append(inputs["attention_mask"][0])
+            input_features = torch.stack(input_features_list, dim=0)
+            attention_mask = torch.stack(attention_mask_list, dim=0)
+        else:
+            inputs = feature_extractor(
+                audio_16k.cpu(), sampling_rate=16000, return_tensors="pt"
+            )
+            input_features = inputs["input_features"][0]
+            attention_mask = inputs["attention_mask"][0]
+            input_features = input_features.unsqueeze(0)
+            attention_mask = attention_mask.unsqueeze(0)
+
+        input_features = input_features.to(self.device)
+        attention_mask = attention_mask.to(self.device)
         audio = audio.to(self.device)
 
         # by default, we use autocast for semantic feature extraction
