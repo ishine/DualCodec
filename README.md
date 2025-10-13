@@ -206,7 +206,7 @@ pip install "dualcodec[train]"
 
 3. Get discriminator checkpoints:
 ```bash
-huggingface-cli download amphion/dualcodec --local-dir dualcodec_ckpts
+huggingface-cli download amphion/dualcodec --local-dir dualcodec_ckpts --revision a4243540cfb149e38c82dc80dfa5c83d5e0af2a9
 ```
 
 4. To run example finetuning on Emilia German data (streaming, no need to download files. Need network access to Huggingface):
