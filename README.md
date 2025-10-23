@@ -23,6 +23,7 @@ pip install dualcodec
 ```
 
 ## News
+- 2025-10-01: FlexiCodec [![ArXiv](https://img.shields.io/badge/arXiv-PDF-green?logo=arxiv&style=flat-square)](https://arxiv.org/abs/2510.00981)  [![Github](https://img.shields.io/badge/GitHub-Code-blue?logo=Github&style=flat-square)](https://github.com/amphionspace/FlexiCodec) [![Demo Page](https://img.shields.io/badge/GitHub.io-Demo_Page-blue?logo=Github&style=flat-square)](https://flexicodec.github.io/) is a new model built on DualCodec, supporting controllable, dynamic frame rate <= 12.5Hz. If you're interested in lower frame rate codecs, welcome to try it out!
 - 2025-05-19: DualCodec is accepted to Interspeech 2025!
 - 2025-03-30: Added automatic downloading from huggingface. Uploaded some TTS models (DualCodec-VALLE, DualCodec-Voicebox).
 - 2025-01-22: I added training and finetuning instructions for DualCodec, as well as a gradio interface. Version is v0.3.0.
